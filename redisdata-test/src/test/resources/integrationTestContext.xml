@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+                           http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
+
+    <aop:aspectj-autoproxy/>
+    <context:annotation-config/>
+
+    <bean id="objectMapper" class="org.codehaus.jackson.map.ObjectMapper"/>
+
+    <bean id="jacksonJsonDataMapper" class="com.github.eemmiirr.redisdata.datamapper.JacksonJsonDataMapper">
+        <constructor-arg name="objectMapper" ref="objectMapper"/>
+    </bean>
+
+    <bean id="fstDataMapper" class="com.github.eemmiirr.redisdata.datamapper.FSTDataMapper"/>
+
+    <bean id="jdkSerialisationDataMapper" class="com.github.eemmiirr.redisdata.datamapper.JDKSerialisationDataMapper"/>
+
+    <bean id="stringValueOfDataMapper" class="com.github.eemmiirr.redisdata.datamapper.StringValueOfDataMapper" />
+
+    <bean id="poolConfig" class="org.apache.commons.pool2.impl.GenericObjectPoolConfig">
+        <property name="maxIdle" value="5" />
+        <property name="minIdle" value="1" />
+        <property name="testOnBorrow" value="true" />
+        <property name="testOnReturn" value="true" />
+        <property name="testWhileIdle" value="true" />
+        <property name="numTestsPerEvictionRun" value="10" />
+        <property name="timeBetweenEvictionRunsMillis" value="60000" />
+    </bean>
+
+    <bean id="primaryJedisConnectionPool" class="com.github.eemmiirr.redisdata.jedis.DefaultJedisConnectionPool">
+        <constructor-arg name="jedisPool">
+            <bean class="redis.clients.jedis.JedisPool">
+                <constructor-arg name="host" value="localhost"/>
+                <constructor-arg name="port" value="6379"/>
+                <constructor-arg name="poolConfig" ref="poolConfig"/>
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="secondaryJedisConnectionPool" class="com.github.eemmiirr.redisdata.jedis.DefaultJedisConnectionPool">
+        <constructor-arg name="jedisPool">
+            <bean class="redis.clients.jedis.JedisPool">
+                <constructor-arg name="host" value="localhost"/>
+                <constructor-arg name="port" value="6380"/>
+                <constructor-arg name="poolConfig" ref="poolConfig" />
+            </bean>
+        </constructor-arg>
+    </bean>
+
+    <bean id="transactionManager" class="com.github.eemmiirr.redisdata.jedis.JedisTransactionManager">
+        <constructor-arg name="connectionPool" ref="primaryJedisConnectionPool"/>
+    </bean>
+
+    <bean id="redisSessionFactory" class="com.github.eemmiirr.redisdata.jedis.JedisSessionFactory">
+        <constructor-arg name="defaultKeyDataMapper" ref="jacksonJsonDataMapper"/>
+        <constructor-arg name="defaultValueDataMapper" ref="jacksonJsonDataMapper"/>
+        <constructor-arg name="transactionManager" ref="transactionManager" />
+        <constructor-arg name="keyDataMappers">
+            <map>
+                <entry key="#{T(java.lang.Class).forName('java.lang.Integer')}" value-ref="stringValueOfDataMapper" />
+            </map>
+        </constructor-arg>
+        <constructor-arg name="valueDataMappers">
+            <map>
+                <entry key="#{T(java.lang.Class).forName('java.lang.Integer')}" value-ref="stringValueOfDataMapper" />
+                <entry key="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.ComplexEntity')}" value-ref="jacksonJsonDataMapper" />
+                <entry key="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.SimpleEntity')}" value-ref="jacksonJsonDataMapper" />
+            </map>
+        </constructor-arg>
+    </bean>
+
+    <bean id="redisDataSignalizerAspect" class="com.github.eemmiirr.redisdata.signalizer.RedisDataSignalizerAspect" factory-method="getInstance">
+        <constructor-arg name="transactionManager" ref="transactionManager"/>
+    </bean>
+
+    <bean id="keyCommandComplexEntityBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createKeyCommandBinding">
+        <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+        <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+        <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.ComplexEntity')}"/>
+    </bean>
+
+    <bean id="keyCommandSimpleEntityBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createKeyCommandBinding">
+        <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+        <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+        <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.SimpleEntity')}"/>
+    </bean>
+
+    <bean id="keyCommandIntegerBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createKeyCommandBinding">
+        <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+        <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+        <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+    </bean>
+
+    <bean id="stringCommandComplexEntityBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createStringCommandBinding">
+        <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+        <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+        <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.ComplexEntity')}"/>
+    </bean>
+
+    <bean id="stringCommandSimpleEntityBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createStringCommandBinding">
+        <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+        <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+        <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.SimpleEntity')}"/>
+    </bean>
+
+    <bean id="stringCommandIntegerBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createStringCommandBinding">
+        <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+        <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+        <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+    </bean>
+
+    <bean id="listCommandComplexEntityBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createListCommandBinding">
+        <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+        <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+        <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.ComplexEntity')}"/>
+    </bean>
+
+    <bean id="listCommandSimpleEntityBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createListCommandBinding">
+        <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+        <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+        <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.SimpleEntity')}"/>
+    </bean>
+
+    <bean id="setCommandComplexEntityBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createSetCommandBinding">
+        <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+        <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+        <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.ComplexEntity')}"/>
+    </bean>
+
+    <bean id="setCommandSimpleEntityBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createSetCommandBinding">
+        <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+        <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+        <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.SimpleEntity')}"/>
+    </bean>
+
+    <bean id="sortedSetCommandComplexEntityBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createSortedSetCommandBinding">
+        <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+        <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+        <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.ComplexEntity')}"/>
+    </bean>
+
+    <bean id="sortedSetCommandSimpleEntityBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createSortedSetCommandBinding">
+        <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+        <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+        <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.SimpleEntity')}"/>
+    </bean>
+
+    <bean id="hashCommandComplexEntityBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createHashCommandBinding">
+        <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+        <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+        <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.ComplexEntity')}"/>
+    </bean>
+
+    <bean id="hashSetCommandSimpleEntityBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createHashCommandBinding">
+        <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+        <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+        <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.SimpleEntity')}"/>
+    </bean>
+
+    <bean id="hashCommandIntegerBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createHashCommandBinding">
+        <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+        <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+        <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+    </bean>
+
+    <bean id="keyCommandComplexEntityService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.key.KeyCommandComplexEntityService"/>
+    <bean id="keyCommandComplexEntityPipelinedService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.key.KeyCommandComplexEntityPipelinedService"/>
+    <bean id="keyCommandComplexEntityTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.key.KeyCommandComplexEntityTransactionalService"/>
+    <bean id="keyCommandComplexEntityPipelinedTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.key.KeyCommandComplexEntityPipelinedTransactionalService"/>
+
+    <bean id="keyCommandIntegerService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.key.KeyCommandIntegerService"/>
+    <bean id="keyCommandIntegerPipelinedService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.key.KeyCommandIntegerPipelinedService"/>
+    <bean id="keyCommandIntegerTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.key.KeyCommandIntegerTransactionalService"/>
+    <bean id="keyCommandIntegerPipelinedTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.key.KeyCommandIntegerPipelinedTransactionalService"/>
+
+    <bean id="stringCommandComplexEntityService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.string.StringCommandComplexEntityService"/>
+    <bean id="stringCommandComplexEntityPipelinedService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.string.StringCommandComplexEntityPipelinedService"/>
+    <bean id="stringCommandComplexEntityTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.string.StringCommandComplexEntityTransactionalService"/>
+    <bean id="stringCommandComplexEntityPipelinedTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.string.StringCommandComplexEntityPipelinedTransactionalService"/>
+
+    <bean id="stringCommandIntegerService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.string.StringCommandIntegerService"/>
+    <bean id="stringCommandIntegerPipelinedService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.string.StringCommandIntegerPipelinedService"/>
+    <bean id="stringCommandIntegerTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.string.StringCommandIntegerTransactionalService"/>
+    <bean id="stringCommandIntegerPipelinedTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.string.StringCommandIntegerPipelinedTransactionalService"/>
+
+    <bean id="listCommandComplexEntityService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.list.ListCommandComplexEntityService"/>
+    <bean id="listCommandComplexEntityPipelinedService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.list.ListCommandComplexEntityPipelinedService"/>
+    <bean id="listCommandComplexEntityTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.list.ListCommandComplexEntityTransactionalService"/>
+    <bean id="listCommandComplexEntityPipelinedTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.list.ListCommandComplexEntityPipelinedTransactionalService"/>
+
+    <bean id="setCommandComplexEntityService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.set.SetCommandComplexEntityService"/>
+    <bean id="setCommandComplexEntityPipelinedService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.set.SetCommandComplexEntityPipelinedService"/>
+    <bean id="setCommandComplexEntityTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.set.SetCommandComplexEntityTransactionalService"/>
+    <bean id="setCommandComplexEntityPipelinedTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.set.SetCommandComplexEntityPipelinedTransactionalService"/>
+
+    <bean id="sortedSetCommandComplexEntityService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.sortedset.SortedSetCommandComplexEntityService"/>
+    <bean id="sortedSetCommandComplexEntityPipelinedService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.sortedset.SortedSetCommandComplexEntityPipelinedService"/>
+    <bean id="sortedSetCommandComplexEntityTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.sortedset.SortedSetCommandComplexEntityTransactionalService"/>
+    <bean id="sortedSetCommandComplexEntityPipelinedTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.sortedset.SortedSetCommandComplexEntityPipelinedTransactionalService"/>
+
+    <bean id="hashCommandComplexEntityService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.hash.HashCommandComplexEntityService"/>
+    <bean id="hashCommandComplexEntityPipelinedService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.hash.HashCommandComplexEntityPipelinedService"/>
+    <bean id="hashCommandComplexEntityTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.hash.HashCommandComplexEntityTransactionalService"/>
+    <bean id="hashCommandComplexEntityPipelinedTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.hash.HashCommandComplexEntityPipelinedTransactionalService"/>
+
+    <bean id="hashCommandIntegerService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.hash.HashCommandIntegerService"/>
+    <bean id="hashCommandIntegerPipelinedService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.hash.HashCommandIntegerPipelinedService"/>
+    <bean id="hashCommandIntegerTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.hash.HashCommandIntegerTransactionalService"/>
+    <bean id="hashCommandIntegerPipelinedTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.hash.HashCommandIntegerPipelinedTransactionalService"/>
+
+    <bean id="stringCommandPerformanceService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.string.StringCommandPerformanceService"/>
+    <bean id="jedisIntegrationService" class="com.github.eemmiirr.redisdata.jedis.JedisIntegrationService"/>
+</beans>

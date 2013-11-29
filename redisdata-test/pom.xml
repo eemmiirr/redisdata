@@ -1,0 +1,129 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.github.eemmiirr.redisdata</groupId>
+        <artifactId>redisdata-parent</artifactId>
+        <version>0.7-SNAPSHOT</version>
+    </parent>
+    <artifactId>redisdata-test</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Redis Data Test</name>
+    <url>https://github.com/eemmiirr/redisdata/redisdata-test</url>
+    <description>Tests for Redis Data</description>
+    <licenses>
+        <license>
+            <name>GNU LESSER GENERAL PUBLIC LICENSE Version 3</name>
+            <url>http://www.gnu.org/licenses/lgpl-3.0.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <id>1</id>
+            <name>Emir Dizdarevic</name>
+        </developer>
+    </developers>
+
+    <dependencies>
+
+        <!--************************************-->
+        <!-- MODULE DEPENDENCIES                -->
+        <!--************************************-->
+
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>redisdata-core</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!--************************************-->
+        <!-- TEST DEPENDENCIES                  -->
+        <!--************************************-->
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.11</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest-all</artifactId>
+            <version>1.3</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>1.8.4</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <version>${spring.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.orange.redis-embedded</groupId>
+            <artifactId>embedded-redis</artifactId>
+            <version>0.5</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.4</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-aop</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!--<plugin>-->
+                <!--<groupId>org.codehaus.mojo</groupId>-->
+                <!--<artifactId>aspectj-maven-plugin</artifactId>-->
+                <!--<version>${aspectj-maven-plugin.version}</version>-->
+                <!--<configuration>-->
+                    <!--<verbose>true</verbose>-->
+                    <!--<complianceLevel>${java.version}</complianceLevel>-->
+                    <!--<source>${java.version}</source>-->
+                    <!--<encoding>UTF-8</encoding>-->
+                    <!--<showWeaveInfo>true</showWeaveInfo>-->
+                    <!--<weaveDependencies>-->
+                        <!--<weaveDependency>-->
+                            <!--<groupId>${groupId}</groupId>-->
+                            <!--<artifactId>redisdata-core</artifactId>-->
+                        <!--</weaveDependency>-->
+                    <!--</weaveDependencies>-->
+                    <!--<weaveWithAspectsInMainSourceFolder>false</weaveWithAspectsInMainSourceFolder>-->
+                <!--</configuration>-->
+                <!--<executions>-->
+                    <!--<execution>-->
+                        <!--<goals>-->
+                            <!--<goal>test-compile</goal>-->
+                        <!--</goals>-->
+                    <!--</execution>-->
+                <!--</executions>-->
+            <!--</plugin>-->
+        </plugins>
+    </build>
+
+</project>
