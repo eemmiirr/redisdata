@@ -3,7 +3,7 @@
     <parent>
         <groupId>com.github.eemmiirr.redisdata</groupId>
         <artifactId>redisdata-parent</artifactId>
-        <version>0.7</version>
+        <version>0.8-SNAPSHOT</version>
     </parent>
     <artifactId>redisdata-core</artifactId>
     <packaging>jar</packaging>
