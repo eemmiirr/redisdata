@@ -5,7 +5,6 @@ Redis Data is a Transaction Manager and Object Mapper for redis implemented in J
 
 Features
 --------
-- Support for nested transactions (EXPERIMENTAL)
 - Automated data mapping between redis keys/values and java entities
 - Configurable data mappers
 - Configurable clients (Currently only jedis supported)
@@ -14,6 +13,7 @@ Features
 - Transparent usage regardless of the type of session (plain, transaction, pipelining. transaction and pipelining combined)
 - Data type enforcing
 - All exceptions are Unchecked even the Checked ones
+- Support for nested transactions (EXPERIMENTAL - Minimum redis connection pool size must be at least the size of the debth of nested transactions or it will end up in a dead lock. Semaphore has to be implemented to solve this problem.)
 
 Minimum requirements
 --------------------
@@ -24,7 +24,7 @@ Minimum requirements
 
 Dependency
 ----------
-```
+```xml
 <dependency>
     <groupId>com.github.eemmiirr</groupId>
     <artifactId>redisdata-core</artifactId>
@@ -59,7 +59,7 @@ Data mappers are bound to a java type. They tell Redis Data how to serialize/des
 How to use
 ----------
 #### Define a connection poll and transaction manager
-```
+```xml
  <bean id="poolConfig" class="org.apache.commons.pool2.impl.GenericObjectPoolConfig">
     <property name="maxIdle" value="5" />
     <property name="minIdle" value="1" />
@@ -99,7 +99,7 @@ JDKSerialisationDataMapper        | DataMapper which uses teh JDK serialization.
 StringValueOfDataMapper           | DataMapper which uses the toString method to serialize and the static valueOf method to deserialize objects. Useful for primitive wrapper classes.
 
 
-```
+```xml
 <bean id="objectMapper" class="org.codehaus.jackson.map.ObjectMapper"/>
 <bean id="jacksonJsonDataMapper" class="com.github.eemmiirr.redisdata.datamapper.JacksonJsonDataMapper">
     <constructor-arg name="objectMapper" ref="objectMapper"/>
@@ -109,7 +109,7 @@ StringValueOfDataMapper           | DataMapper which uses the toString method to
 ```
 
 #### Define the Session Factory
-```
+```xml
 <bean id="redisSessionFactory" class="com.github.eemmiirr.redisdata.jedis.JedisSessionFactory">
     <constructor-arg name="defaultKeyDataMapper" ref="jacksonJsonDataMapper"/>
     <constructor-arg name="defaultValueDataMapper" ref="jacksonJsonDataMapper"/>
@@ -140,7 +140,8 @@ ListCommand                       | Redis list commands. Extends key commands.
 SetCommand                        | Redis set commands. Extends key commands.
 SortedSetCommand                  | Redis sorted set commands. Extends key commands.
 HashCommand                       | Redis hash commands. Extends key commands.
-```
+
+```xml
 <bean id="stringCommandEntity1Binding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createStringCommandBinding">
     <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
     <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
@@ -156,7 +157,7 @@ Signalizer                       | Description
 ---------------------------------|------------------------------------
 RedisDataSignalizerAspect        | Uses AOP to intersect method calls. 
 
-```
+```xml
 <bean id="redisDataSignalizerAspect" class="com.github.eemmiirr.redisdata.signalizer.RedisDataSignalizerAspect" factory-method="getInstance">
     <constructor-arg name="transactionManager" ref="transactionManager"/>
 </bean>
@@ -164,11 +165,11 @@ RedisDataSignalizerAspect        | Uses AOP to intersect method calls.
 
 ##### Enabling the signalizer
 Either using spring
-```
+```xml
 <aop:aspectj-autoproxy/>
 ```
 or using AspectJ maven plugin
-```
+```xml
 <plugin>
     <groupId>org.codehaus.mojo</groupId>
     <artifactId>aspectj-maven-plugin</artifactId>
@@ -200,7 +201,7 @@ or using AspectJ maven plugin
 #### Annotate the service
 Either annotate the class or method with @RedisData. If both annotations are present the annotation on the method has higher priority.
 
-```
+```java
 @RedisData
 public class StringCommandPerformanceService {
 
@@ -287,6 +288,12 @@ Tested on:
 | get     | Redis-Data | Jedis  | Pipelined Transaction | 1000000 |  2.066s |
 
 
+Run locally performance tests: 
+```
+mvn clean verify -PrunPerfs
+```
+
+
 ### Future work:
 - Add semaphoring logic to support nested transactions
 - Add support for other clients
@@ -296,7 +303,3 @@ Tested on:
 - Improve javadoc
 - Improve performance
 - Improve test coverage
-
-Minimum redis connection pool size must be at least the size of the debth of nested transactions or it
-
-NOTE:  will block.
