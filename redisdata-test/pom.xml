@@ -9,7 +9,7 @@
     <packaging>jar</packaging>
 
     <name>Redis Data Test</name>
-    <url>https://github.com/eemmiirr/redisdata/redisdata-test</url>
+    <url>https://github.com/eemmiirr/redisdata</url>
     <description>Tests for Redis Data</description>
     <licenses>
         <license>
