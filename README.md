@@ -147,6 +147,12 @@ HashCommand                       | Redis hash commands. Extends key commands.
     <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
     <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('foo.bar.Entity1')}"/>
 </bean>
+
+<bean id="stringCommandIntegerBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createStringCommandBinding">
+    <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+    <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+    <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+</bean>
 ```
 
 #### Define the Signalizer
@@ -206,34 +212,43 @@ Either annotate the class or method with @RedisData. If both annotations are pre
 public class RedisService {
 
     @Autowired
-    @Qualifier("stringCommandEntity1Binding")
     private StringCommand<Integer, Entity1> stringCommandEntity1Binding;
+    
+    @Autowired
+    private StringCommand<Integer, Integer> stringCommandIntegerBinding;
 
-    public void set(int count) {
+    public void set() {
         for (int i = 0; i < 100000; i++) {
             stringCommandEntity1Binding.set(i, new Entity1());
         }
     }
 
     @RedisData(pipelined = true)
-    public void setPipelined(int count) {
+    public void setPipelined() {
         for (int i = 0; i < 100000; i++) {
             stringCommandEntity1Binding.set(i, new Entity1());
         }
     }
 
     @RedisData(transactional = true)
-    public void setTransactional(int count) {
+    public void setTransactional() {
         for (int i = 0; i < 100000; i++) {
             stringCommandEntity1Binding.set(i, new Entity1());
         }
     }
 
     @RedisData(pipelined = true, transactional = true)
-    public void setPipelinedTransaction(int count) {
+    public void setPipelinedTransaction() {
         for (int i = 0; i < 100000; i++) {
             stringCommandEntity1Binding.set(i, new Entity1());
         }
+    }
+    
+    @RedisData(pipelined = true, transactional = true)
+    public Response<Integer> setAndIncrPipelinedTransaction() {
+        stringCommandIntegerBinding.set(1, 100);
+        stringCommandIntegerBinding.incr(1);
+        return stringCommandIntegerBinding.get(1);
     }
 }
 ```
