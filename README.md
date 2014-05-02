@@ -203,7 +203,7 @@ Either annotate the class or method with @RedisData. If both annotations are pre
 
 ```java
 @RedisData
-public class StringCommandPerformanceService {
+public class RedisService {
 
     @Autowired
     @Qualifier("stringCommandEntity1Binding")
@@ -211,28 +211,28 @@ public class StringCommandPerformanceService {
 
     public void set(int count) {
         for (int i = 0; i < 100000; i++) {
-            stringCommandIntegerBinding.set(i, i);
+            stringCommandEntity1Binding.set(i, new Entity1());
         }
     }
 
     @RedisData(pipelined = true)
     public void setPipelined(int count) {
         for (int i = 0; i < 100000; i++) {
-            stringCommandIntegerBinding.set(i, i);
+            stringCommandEntity1Binding.set(i, new Entity1());
         }
     }
 
     @RedisData(transactional = true)
     public void setTransactional(int count) {
         for (int i = 0; i < 100000; i++) {
-            stringCommandIntegerBinding.set(i, i);
+            stringCommandEntity1Binding.set(i, new Entity1());
         }
     }
 
     @RedisData(pipelined = true, transactional = true)
     public void setPipelinedTransaction(int count) {
         for (int i = 0; i < 100000; i++) {
-            stringCommandIntegerBinding.set(i, i);
+            stringCommandEntity1Binding.set(i, new Entity1());
         }
     }
 }
