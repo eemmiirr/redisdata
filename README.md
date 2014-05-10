@@ -1,7 +1,7 @@
 Redis Data
 ==========
 
-Redis Data is a Transaction Manager and ORM tool for redis implemented in Java 6. It simplifies the usage of redis in java and abstracts the way data is mapped. All data deserialization/marshalling are lazy which means they will only happen when the data is accessed.  
+Redis Data is a Transaction Manager and Object Mapper tool for redis implemented in Java 6. It simplifies the usage of redis in java and abstracts the way data is mapped. All data deserialization/marshalling are lazy which means they will only happen when the data is accessed.  
 
 Features
 --------
