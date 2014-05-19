@@ -168,6 +168,7 @@
 package com.github.eemmiirr.redisdata.testinfrastructure.service.string;
 
 import com.github.eemmiirr.redisdata.annotation.RedisData;
+import com.github.eemmiirr.redisdata.command.ListCommand;
 import com.github.eemmiirr.redisdata.command.StringCommand;
 import com.github.eemmiirr.redisdata.response.Response;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -180,67 +181,63 @@ import java.util.List;
  * @author Emir Dizdarevic
  * @since 0.7
  */
-@RedisData
-public class StringCommandPerformanceService {
+public class CommandPerformanceService {
 
     @Autowired
     @Qualifier("stringCommandIntegerBinding")
     private StringCommand<Integer, Integer> stringCommandIntegerBinding;
 
-    public void set(int count) {
+    @Autowired
+    @Qualifier("listCommandIntegerBinding")
+    private ListCommand<Integer, Integer> listCommandIntegerBinding;
 
-        for (int i = 0; i < count; i++) {
-            stringCommandIntegerBinding.set(i, i);
-        }
+    @RedisData
+    public void set(int count) {
+        setInternal(count);
     }
 
     @RedisData(pipelined = true)
     public void setPipelined(int count) {
-
-        for (int i = 0; i < count; i++) {
-            stringCommandIntegerBinding.set(i, i);
-        }
+        setInternal(count);
     }
 
     @RedisData(transactional = true)
     public void setTransactional(int count) {
-
-        for (int i = 0; i < count; i++) {
-            stringCommandIntegerBinding.set(i, i);
-        }
+        setInternal(count);
     }
 
     @RedisData(pipelined = true, transactional = true)
     public void setPipelinedTransaction(int count) {
+        setInternal(count);
+    }
 
+    private void setInternal(int count) {
         for (int i = 0; i < count; i++) {
             stringCommandIntegerBinding.set(i, i);
         }
     }
 
+    @RedisData
     public List<Response> get(int count) {
-
-        final List<Response> responses = new LinkedList<Response>();
-        for (int i = 0; i < count; i++) {
-            responses.add(stringCommandIntegerBinding.get(i));
-        }
-
-        return responses;
+        return getInternal(count);
     }
 
     @RedisData(pipelined = true)
     public List<Response> getPipelined(int count) {
-
-        final List<Response> responses = new LinkedList<Response>();
-        for (int i = 0; i < count; i++) {
-            responses.add(stringCommandIntegerBinding.get(i));
-        }
-
-        return responses;
+        return getInternal(count);
     }
 
     @RedisData(transactional = true)
     public List<Response> getTransactional(int count) {
+        return getInternal(count);
+    }
+
+    @RedisData(pipelined = true, transactional = true)
+    public List<Response> getPipelinedTransaction(int count) {
+        return getInternal(count);
+    }
+
+    private List<Response> getInternal(int count) {
 
         final List<Response> responses = new LinkedList<Response>();
         for (int i = 0; i < count; i++) {
@@ -250,12 +247,56 @@ public class StringCommandPerformanceService {
         return responses;
     }
 
-    @RedisData(pipelined = true, transactional = true)
-    public List<Response> getPipelinedTransaction(int count) {
+    @RedisData
+    public void lPush(int count) {
+        lPushInternal(count);
+    }
 
+    @RedisData(pipelined = true)
+    public void lPushPipelined(int count) {
+        lPushInternal(count);
+    }
+
+    @RedisData(transactional = true)
+    public void lPushTransactional(int count) {
+        lPushInternal(count);
+    }
+
+    @RedisData(pipelined = true, transactional = true)
+    public void lPushPipelinedTransaction(int count) {
+        lPushInternal(count);
+    }
+
+    private void lPushInternal(int count) {
+        for (int i = 0; i < count; i++) {
+            listCommandIntegerBinding.lPush(i, i);
+        }
+    }
+
+    @RedisData
+    public List<Response> lpop(int count) {
+        return lpopInternal(count);
+    }
+
+    @RedisData(pipelined = true)
+    public List<Response> lpopPipelined(int count) {
+        return lpopInternal(count);
+    }
+
+    @RedisData(transactional = true)
+    public List<Response> lpopTransactional(int count) {
+        return lpopInternal(count);
+    }
+
+    @RedisData(pipelined = true, transactional = true)
+    public List<Response> lpopPipelinedTransaction(int count) {
+        return lpopInternal(count);
+    }
+
+    private List<Response> lpopInternal(int count) {
         final List<Response> responses = new LinkedList<Response>();
         for (int i = 0; i < count; i++) {
-            responses.add(stringCommandIntegerBinding.get(i));
+            responses.add(listCommandIntegerBinding.lPop(i));
         }
 
         return responses;

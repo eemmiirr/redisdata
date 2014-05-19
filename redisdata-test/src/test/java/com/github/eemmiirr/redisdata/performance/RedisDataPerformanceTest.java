@@ -168,7 +168,7 @@
 package com.github.eemmiirr.redisdata.performance;
 
 import com.github.eemmiirr.redisdata.AbstractRedisTest;
-import com.github.eemmiirr.redisdata.testinfrastructure.service.string.StringCommandPerformanceService;
+import com.github.eemmiirr.redisdata.testinfrastructure.service.string.CommandPerformanceService;
 import com.github.eemmiirr.redisdata.util.DataGrid;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -194,7 +194,7 @@ public class RedisDataPerformanceTest extends AbstractRedisTest {
     private static final int count = 1000000;
 
     @Autowired
-    private StringCommandPerformanceService stringCommandPerformanceService;
+    private CommandPerformanceService commandPerformanceService;
 
     @Test
     public void testSimpleSetPerformance() {
@@ -252,49 +252,49 @@ public class RedisDataPerformanceTest extends AbstractRedisTest {
 
         // GET
         primaryJedis.flushAll();
-        prepareData();
+        prepareDataForGet();
         long start = System.currentTimeMillis();
         testJedisCommandGetPerformance();
         dataGrid.add(new Object[]{"get", "Native", "Jedis", "Simple", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
 
         primaryJedis.flushAll();
-        prepareData();
+        prepareDataForGet();
         start = System.currentTimeMillis();
         testJedisCommandGetPipelinedPerformance();
         dataGrid.add(new Object[]{"get", "Native", "Jedis", "Pipelined", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
 
         primaryJedis.flushAll();
-        prepareData();
+        prepareDataForGet();
         start = System.currentTimeMillis();
         testJedisCommandGetTransactionPerformance();
         dataGrid.add(new Object[]{"get", "Native", "Jedis", "Transaction", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
 
         primaryJedis.flushAll();
-        prepareData();
+        prepareDataForGet();
         start = System.currentTimeMillis();
         testJedisCommandGetPipelineTransactionPerformance();
         dataGrid.add(new Object[]{"get", "Native", "Jedis", "Pipelined Transaction", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
 
         primaryJedis.flushAll();
-        prepareData();
+        prepareDataForGet();
         start = System.currentTimeMillis();
         testRedisDataCommandGetPerformance();
         dataGrid.add(new Object[]{"get", "Redis-Data", "Jedis", "Simple", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
 
         primaryJedis.flushAll();
-        prepareData();
+        prepareDataForGet();
         start = System.currentTimeMillis();
         testRedisDataCommandGetPipelinedPerformance();
         dataGrid.add(new Object[]{"get", "Redis-Data", "Jedis", "Pipelined", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
 
         primaryJedis.flushAll();
-        prepareData();
+        prepareDataForGet();
         start = System.currentTimeMillis();
         testRedisDataCommandGetTransactionalPerformance();
         dataGrid.add(new Object[]{"get", "Redis-Data", "Jedis", "Transaction", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
 
         primaryJedis.flushAll();
-        prepareData();
+        prepareDataForGet();
         start = System.currentTimeMillis();
         testRedisDataCommandGetPipelinedTransactionlPerformance();
         dataGrid.add(new Object[]{"get", "Redis-Data", "Jedis", "Pipelined Transaction", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
@@ -302,11 +302,128 @@ public class RedisDataPerformanceTest extends AbstractRedisTest {
         dataGrid.render();
     }
 
-    private void prepareData() {
+    @Test
+    public void testSimpleLPushPerformance() {
+
+        final DataGrid dataGrid = new DataGrid(columnNames);
+
+        // SET
+        primaryJedis.flushAll();
+        long start = System.currentTimeMillis();
+        testJedisCommandLPushPerformance();
+        dataGrid.add(new Object[]{"lpush", "Native", "Jedis", "Simple", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
+
+        primaryJedis.flushAll();
+        start = System.currentTimeMillis();
+        testJedisCommandLPushPipelinedPerformance();
+        dataGrid.add(new Object[]{"lpush", "Native", "Jedis", "Pipelined", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
+
+        primaryJedis.flushAll();
+        start = System.currentTimeMillis();
+        testJedisCommandLPushTransactionPerformance();
+        dataGrid.add(new Object[]{"lpush", "Native", "Jedis", "Transaction", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
+
+        primaryJedis.flushAll();
+        start = System.currentTimeMillis();
+        testJedisCommandLPushPipelineTransactionPerformance();
+        dataGrid.add(new Object[]{"lpush", "Native", "Jedis", "Pipelined Transaction", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
+
+        primaryJedis.flushAll();
+        start = System.currentTimeMillis();
+        testRedisDataCommandLPushPerformance();
+        dataGrid.add(new Object[]{"lpush", "Redis-Data", "Jedis", "Simple", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
+
+        primaryJedis.flushAll();
+        start = System.currentTimeMillis();
+        testRedisDataCommandLPushPipelinedPerformance();
+        dataGrid.add(new Object[]{"lpush", "Redis-Data", "Jedis", "Pipelined", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
+
+        primaryJedis.flushAll();
+        start = System.currentTimeMillis();
+        testRedisDataCommandLPushTransactionalPerformance();
+        dataGrid.add(new Object[]{"lpush", "Redis-Data", "Jedis", "Transaction", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
+
+        primaryJedis.flushAll();
+        start = System.currentTimeMillis();
+        testRedisDataCommandLPushPipelinedTransactionlPerformance();
+        dataGrid.add(new Object[]{"lpush", "Redis-Data", "Jedis", "Pipelined Transaction", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
+
+        dataGrid.render();
+    }
+
+    @Test
+    public void testSimpleLPopPerformance() {
+
+        final DataGrid dataGrid = new DataGrid(columnNames);
+
+        // GET
+        primaryJedis.flushAll();
+        prepareDataForLPop();
+        long start = System.currentTimeMillis();
+        testJedisCommandLPopPerformance();
+        dataGrid.add(new Object[]{"lpop", "Native", "Jedis", "Simple", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
+
+        primaryJedis.flushAll();
+        prepareDataForLPop();
+        start = System.currentTimeMillis();
+        testJedisCommandLPopPipelinedPerformance();
+        dataGrid.add(new Object[]{"lpop", "Native", "Jedis", "Pipelined", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
+
+        primaryJedis.flushAll();
+        prepareDataForLPop();
+        start = System.currentTimeMillis();
+        testJedisCommandLPopTransactionPerformance();
+        dataGrid.add(new Object[]{"lpop", "Native", "Jedis", "Transaction", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
+
+        primaryJedis.flushAll();
+        prepareDataForLPop();
+        start = System.currentTimeMillis();
+        testJedisCommandLPopPipelineTransactionPerformance();
+        dataGrid.add(new Object[]{"lpop", "Native", "Jedis", "Pipelined Transaction", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
+
+        primaryJedis.flushAll();
+        prepareDataForLPop();
+        start = System.currentTimeMillis();
+        testRedisDataCommandLPopPerformance();
+        dataGrid.add(new Object[]{"lpop", "Redis-Data", "Jedis", "Simple", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
+
+        primaryJedis.flushAll();
+        prepareDataForLPop();
+        start = System.currentTimeMillis();
+        testRedisDataCommandLPopPipelinedPerformance();
+        dataGrid.add(new Object[]{"lpop", "Redis-Data", "Jedis", "Pipelined", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
+
+        primaryJedis.flushAll();
+        prepareDataForLPop();
+        start = System.currentTimeMillis();
+        testRedisDataCommandLPopTransactionalPerformance();
+        dataGrid.add(new Object[]{"lpop", "Redis-Data", "Jedis", "Transaction", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
+
+        primaryJedis.flushAll();
+        prepareDataForLPop();
+        start = System.currentTimeMillis();
+        testRedisDataCommandLPopPipelinedTransactionlPerformance();
+        dataGrid.add(new Object[]{"lpop", "Redis-Data", "Jedis", "Pipelined Transaction", count, (System.currentTimeMillis() - start) / (double) 1000 + "s"});
+
+        dataGrid.render();
+    }
+
+    private void prepareDataForGet() {
         final Pipeline pipeline = primaryJedis.pipelined();
         pipeline.multi();
         for (int i = 0; i < count; i++) {
             pipeline.set(String.valueOf(i), String.valueOf(i));
+        }
+
+        pipeline.exec();
+        pipeline.syncAndReturnAll();
+    }
+
+    private void prepareDataForLPop() {
+        final Pipeline pipeline = primaryJedis.pipelined();
+        pipeline.multi();
+        for (int i = 0; i < count; i++) {
+            pipeline.rpush(String.valueOf(i), String.valueOf(i));
         }
 
         pipeline.exec();
@@ -389,35 +506,143 @@ public class RedisDataPerformanceTest extends AbstractRedisTest {
         pipeline.syncAndReturnAll();
     }
 
+    private void testJedisCommandLPushPerformance() {
+        for (int i = 0; i < count; i++) {
+            primaryJedis.lpush(String.valueOf(i), String.valueOf(i));
+        }
+    }
+
+    private void testJedisCommandLPushPipelinedPerformance() {
+
+        final Pipeline pipeline = primaryJedis.pipelined();
+        for (int i = 0; i < count; i++) {
+            pipeline.lpush(String.valueOf(i), String.valueOf(i));
+        }
+        pipeline.syncAndReturnAll();
+    }
+
+    private void testJedisCommandLPushTransactionPerformance() {
+        final Transaction tx = primaryJedis.multi();
+        for (int i = 0; i < count; i++) {
+            tx.lpush(String.valueOf(i), String.valueOf(i));
+        }
+        tx.exec();
+    }
+
+    private void testJedisCommandLPushPipelineTransactionPerformance() {
+        final Pipeline pipeline = primaryJedis.pipelined();
+        pipeline.multi();
+        for (int i = 0; i < count; i++) {
+            pipeline.lpush(String.valueOf(i), String.valueOf(i));
+        }
+
+        pipeline.exec();
+        pipeline.syncAndReturnAll();
+    }
+
+    private void testJedisCommandLPopPerformance() {
+
+        final List<String> responses = new LinkedList<String>();
+        for (int i = 0; i < count; i++) {
+            responses.add(primaryJedis.lpop(String.valueOf(i)));
+        }
+    }
+
+    private void testJedisCommandLPopPipelinedPerformance() {
+
+        final List<Response> responses = new LinkedList<Response>();
+
+        final Pipeline pipeline = primaryJedis.pipelined();
+        for (int i = 0; i < count; i++) {
+            responses.add(pipeline.lpop(String.valueOf(i)));
+        }
+        pipeline.syncAndReturnAll();
+    }
+
+    private void testJedisCommandLPopTransactionPerformance() {
+
+        final List<Response> responses = new LinkedList<Response>();
+        final Transaction tx = primaryJedis.multi();
+        for (int i = 0; i < count; i++) {
+            responses.add(tx.lpop(String.valueOf(i)));
+        }
+        tx.exec();
+    }
+
+    private void testJedisCommandLPopPipelineTransactionPerformance() {
+
+        final List<Response> responses = new LinkedList<Response>();
+        final Pipeline pipeline = primaryJedis.pipelined();
+        pipeline.multi();
+        for (int i = 0; i < count; i++) {
+            responses.add(pipeline.lpop(String.valueOf(i)));
+        }
+
+        pipeline.exec();
+        pipeline.syncAndReturnAll();
+    }
+
     private void testRedisDataCommandSetPerformance() {
-        stringCommandPerformanceService.set(count);
+        commandPerformanceService.set(count);
     }
 
     private void testRedisDataCommandSetPipelinedPerformance() {
-        stringCommandPerformanceService.setPipelined(count);
+        commandPerformanceService.setPipelined(count);
     }
 
     private void testRedisDataCommandSetTransactionalPerformance() {
-        stringCommandPerformanceService.setTransactional(count);
+        commandPerformanceService.setTransactional(count);
     }
 
     private void testRedisDataCommandSetPipelinedTransactionlPerformance() {
-        stringCommandPerformanceService.setPipelinedTransaction(count);
+        commandPerformanceService.setPipelinedTransaction(count);
     }
 
     private void testRedisDataCommandGetPerformance() {
-        stringCommandPerformanceService.get(count);
+        commandPerformanceService.get(count);
     }
 
     private void testRedisDataCommandGetPipelinedPerformance() {
-        stringCommandPerformanceService.getPipelined(count);
+        commandPerformanceService.getPipelined(count);
     }
 
     private void testRedisDataCommandGetTransactionalPerformance() {
-        stringCommandPerformanceService.getTransactional(count);
+        commandPerformanceService.getTransactional(count);
     }
 
     private void testRedisDataCommandGetPipelinedTransactionlPerformance() {
-        stringCommandPerformanceService.getPipelinedTransaction(count);
+        commandPerformanceService.getPipelinedTransaction(count);
+    }
+
+    private void testRedisDataCommandLPushPerformance() {
+        commandPerformanceService.lPush(count);
+    }
+
+    private void testRedisDataCommandLPushPipelinedPerformance() {
+        commandPerformanceService.lPushPipelined(count);
+    }
+
+    private void testRedisDataCommandLPushTransactionalPerformance() {
+        commandPerformanceService.lPushTransactional(count);
+    }
+
+    private void testRedisDataCommandLPushPipelinedTransactionlPerformance() {
+        commandPerformanceService.lPushPipelinedTransaction(count);
+    }
+
+    private void testRedisDataCommandLPopPerformance() {
+        commandPerformanceService.lpop(count);
+    }
+
+    private void testRedisDataCommandLPopPipelinedPerformance() {
+        commandPerformanceService.lpopPipelined(count);
+    }
+
+    private void testRedisDataCommandLPopTransactionalPerformance() {
+        commandPerformanceService.lpopTransactional(count);
+    }
+
+    private void testRedisDataCommandLPopPipelinedTransactionlPerformance() {
+        commandPerformanceService.lpopPipelinedTransaction(count);
     }
 }

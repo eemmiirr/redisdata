@@ -126,6 +126,12 @@
         <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.SimpleEntity')}"/>
     </bean>
 
+    <bean id="listCommandIntegerBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createListCommandBinding">
+        <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
+        <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+        <constructor-arg name="valueClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
+    </bean>
+
     <bean id="setCommandComplexEntityBinding" class="com.github.eemmiirr.redisdata.binding.CommandBindingFactory" factory-method="createSetCommandBinding">
         <constructor-arg name="sessionFactory" ref="redisSessionFactory"/>
         <constructor-arg name="keyClass" value="#{T(java.lang.Class).forName('java.lang.Integer')}"/>
@@ -213,6 +219,6 @@
     <bean id="hashCommandIntegerTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.hash.HashCommandIntegerTransactionalService"/>
     <bean id="hashCommandIntegerPipelinedTransactionalService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.hash.HashCommandIntegerPipelinedTransactionalService"/>
 
-    <bean id="stringCommandPerformanceService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.string.StringCommandPerformanceService"/>
+    <bean id="stringCommandPerformanceService" class="com.github.eemmiirr.redisdata.testinfrastructure.service.string.CommandPerformanceService"/>
     <bean id="jedisIntegrationService" class="com.github.eemmiirr.redisdata.jedis.JedisIntegrationService"/>
 </beans>
