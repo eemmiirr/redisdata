@@ -170,18 +170,16 @@ package com.github.eemmiirr.redisdata.jedis;
 import com.github.eemmiirr.redisdata.datamapper.DataMapper;
 import com.github.eemmiirr.redisdata.exception.DataMapperNotSupportedException;
 import com.github.eemmiirr.redisdata.exception.session.SessionNotOpenExcpetion;
-import com.github.eemmiirr.redisdata.session.Session;
-import com.github.eemmiirr.redisdata.session.TypeEnforcingSessionDecorator;
 import com.github.eemmiirr.redisdata.session.ArgumentCheckSessionDecorator;
+import com.github.eemmiirr.redisdata.session.Session;
 import com.github.eemmiirr.redisdata.session.SessionFactory;
+import com.github.eemmiirr.redisdata.session.TypeEnforcingSessionDecorator;
 import com.github.eemmiirr.redisdata.transaction.TransactionManager;
-import com.google.common.base.Preconditions;
+import com.google.common.collect.MapMaker;
 import redis.clients.jedis.*;
 
 import java.util.Collections;
 import java.util.Map;
-
-import static com.google.common.base.Preconditions.checkArgument;
 
 /**
  * @author Emir Dizdarevic
@@ -189,6 +187,7 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 public class JedisSessionFactory implements SessionFactory {
 
+    private static final Map sessionCache = new MapMaker().weakValues().makeMap();
     private final TransactionManager<Jedis, Transaction, Pipeline> transactionManager;
     private final DataMapper defaultKeyDataMapper;
     private final DataMapper defaultValueDataMapper;
@@ -250,35 +249,44 @@ public class JedisSessionFactory implements SessionFactory {
         if(!valueDataMapper.isSupported(valueClass)) throw new DataMapperNotSupportedException(valueClass, valueDataMapper);
 
         // Create a new session
-        if(pipelineOrTransaction != null) {
-            return new ArgumentCheckSessionDecorator<K, V>(
-                new TypeEnforcingSessionDecorator<K, V>(
-                    new JedisPipelineSession<K, V>(
-                        (BinaryRedisPipeline) pipelineOrTransaction,
-                        (MultiKeyBinaryRedisPipeline) pipelineOrTransaction,
-                        pipelineOrTransaction,
-                        keyDataMapper,
-                        keyClass,
-                        valueDataMapper,
-                        valueClass
-                    ),
-                    keyClass,
-                    valueClass
-                )
-            );
-        } else {
-            return new ArgumentCheckSessionDecorator<K, V>(
-                    new TypeEnforcingSessionDecorator<K, V>(
-                            new JedisSession<K, V>(
-                                    jedis,
-                                    keyDataMapper,
-                                    keyClass,
-                                    valueDataMapper,
-                                    valueClass),
-                                    keyClass,
-                                    valueClass
-                    ));
+        final int sessionKey = calculateSessionKey(jedis, pipelineOrTransaction, keyClass, keyDataMapper, valueClass, valueDataMapper);
+        Session<K, V> session = (Session<K, V>) sessionCache.get(sessionKey);
+        if(session == null) {
+            if (pipelineOrTransaction != null) {
+                session = new ArgumentCheckSessionDecorator<K, V>(
+                        new TypeEnforcingSessionDecorator<K, V>(
+                                new JedisPipelineSession<K, V>(
+                                        (BinaryRedisPipeline) pipelineOrTransaction,
+                                        (MultiKeyBinaryRedisPipeline) pipelineOrTransaction,
+                                        pipelineOrTransaction,
+                                        keyDataMapper,
+                                        keyClass,
+                                        valueDataMapper,
+                                        valueClass
+                                ),
+                                keyClass,
+                                valueClass
+                        )
+                );
+            } else {
+                session = new ArgumentCheckSessionDecorator<K, V>(
+                        new TypeEnforcingSessionDecorator<K, V>(
+                                new JedisSession<K, V>(
+                                        jedis,
+                                        keyDataMapper,
+                                        keyClass,
+                                        valueDataMapper,
+                                        valueClass),
+                                keyClass,
+                                valueClass
+                        )
+                );
+            }
+
+            sessionCache.put(sessionKey, session);
         }
+
+        return session;
     }
 
     @Override
@@ -317,5 +325,16 @@ public class JedisSessionFactory implements SessionFactory {
 
     private DataMapper getDataMapper(Class clazz, DataMapper defaultDataMapper, Map<Class, DataMapper> dataMappers) {
         return dataMappers.containsKey(clazz) ? dataMappers.get(clazz) : defaultDataMapper;
+    }
+
+    private int calculateSessionKey(Object... keys) {
+        int total = 0;
+        for (int i = 0; i < keys.length; i++) {
+            if (keys[i] != null) {
+                total ^= keys[i].hashCode();
+            }
+        }
+
+        return total;
     }
 }
