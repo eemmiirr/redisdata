@@ -43,6 +43,7 @@
         <maven-compiler-plugin.version>3.1</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>2.16</maven-surefire-plugin.version>
         <maven-failsafe-plugin.version>2.16</maven-failsafe-plugin.version>
+        <maven-deploy-plugin.version>2.7</maven-deploy-plugin.version>
     </properties>
 
     <dependencyManagement>
