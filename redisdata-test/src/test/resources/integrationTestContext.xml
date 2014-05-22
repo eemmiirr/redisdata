@@ -59,17 +59,17 @@
     <bean id="redisSessionFactory" class="com.github.eemmiirr.redisdata.jedis.JedisSessionFactory">
         <constructor-arg name="defaultKeyDataMapper" ref="jacksonJsonDataMapper"/>
         <constructor-arg name="defaultValueDataMapper" ref="jacksonJsonDataMapper"/>
-        <constructor-arg name="transactionManager" ref="transactionManager" />
+        <constructor-arg name="transactionManager" ref="transactionManager"/>
         <constructor-arg name="keyDataMappers">
             <map>
-                <entry key="#{T(java.lang.Class).forName('java.lang.Integer')}" value-ref="stringValueOfDataMapper" />
+                <entry key="#{T(java.lang.Class).forName('java.lang.Integer')}" value-ref="stringValueOfDataMapper"/>
             </map>
         </constructor-arg>
         <constructor-arg name="valueDataMappers">
             <map>
-                <entry key="#{T(java.lang.Class).forName('java.lang.Integer')}" value-ref="stringValueOfDataMapper" />
-                <entry key="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.ComplexEntity')}" value-ref="jacksonJsonDataMapper" />
-                <entry key="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.SimpleEntity')}" value-ref="jacksonJsonDataMapper" />
+                <entry key="#{T(java.lang.Class).forName('java.lang.Integer')}" value-ref="stringValueOfDataMapper"/>
+                <entry key="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.ComplexEntity')}" value-ref="jacksonJsonDataMapper"/>
+                <entry key="#{T(java.lang.Class).forName('com.github.eemmiirr.redisdata.testinfrastructure.entity.SimpleEntity')}" value-ref="jacksonJsonDataMapper"/>
             </map>
         </constructor-arg>
     </bean>
