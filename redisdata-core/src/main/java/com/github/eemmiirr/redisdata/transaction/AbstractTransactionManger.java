@@ -167,9 +167,10 @@
  */
 package com.github.eemmiirr.redisdata.transaction;
 
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
-import java.util.Stack;
 
 /**
  * @author Emir Dizdarevic
@@ -177,96 +178,61 @@ import java.util.Stack;
  */
 public abstract class AbstractTransactionManger<C, T, P> implements TransactionManager<C, T, P> {
 
-    private final ThreadLocal<Stack<C>> threadLocalConnectionStack = new ThreadLocal<Stack<C>>();
-    private final ThreadLocal<Map<C, T>> threadLocalConnectionTransactionMap = new ThreadLocal<Map<C, T>>();
-    private final ThreadLocal<Map<C, P>> threadLocalConnectionPipelineMap = new ThreadLocal<Map<C, P>>();
+    private final ThreadLocal<Deque<C>> threadLocalConnectionStack = new ThreadLocal<Deque<C>>() {
+        @Override
+        protected Deque<C> initialValue() {
+            return new LinkedList<C>();
+        }
+    };
+    private final ThreadLocal<Map<C, T>> threadLocalConnectionTransactionMap = new ThreadLocal<Map<C, T>>() {
+        @Override
+        protected Map<C, T> initialValue() {
+            return new HashMap<C, T>();
+        }
+    };
+    private final ThreadLocal<Map<C, P>> threadLocalConnectionPipelineMap = new ThreadLocal<Map<C, P>>(){
+        @Override
+        protected Map<C, P> initialValue() {
+            return new HashMap<C, P>();
+        }
+    };
 
     @Override
-    public C getCurrentConnection() {
-        return get(threadLocalConnectionStack);
+    public final C getCurrentConnection() {
+        return threadLocalConnectionStack.get().peek();
     }
 
     @Override
-    public T getCurrentTransaction() {
-        return get(threadLocalConnectionTransactionMap, getCurrentConnection());
+    public final T getCurrentTransaction() {
+        return threadLocalConnectionTransactionMap.get().get(getCurrentConnection());
     }
 
     @Override
-    public P getCurrentPipeline() {
-        return get(threadLocalConnectionPipelineMap, getCurrentConnection());
+    public final P getCurrentPipeline() {
+        return threadLocalConnectionPipelineMap.get().get(getCurrentConnection());
     }
 
     protected void addConnection(C connection) {
-        add(threadLocalConnectionStack, connection);
+        threadLocalConnectionStack.get().push(connection);
     }
 
     protected C removeConnection() {
-        return remove(threadLocalConnectionStack);
+        return threadLocalConnectionStack.get().pop();
     }
 
     protected void mapTransaction(T trasaction) {
-        add(threadLocalConnectionTransactionMap, getCurrentConnection(), trasaction);
+        threadLocalConnectionTransactionMap.get().put(getCurrentConnection(), trasaction);
     }
 
     protected T removeTransaction() {
-        return remove(threadLocalConnectionTransactionMap, getCurrentConnection());
+        return threadLocalConnectionTransactionMap.get().remove(getCurrentConnection());
     }
 
-    protected void mapPipeline(P trasaction) {
-        add(threadLocalConnectionPipelineMap, getCurrentConnection(), trasaction);
+    protected void mapPipeline(P pipeline) {
+        threadLocalConnectionPipelineMap.get().put(getCurrentConnection(), pipeline);
     }
 
     protected P removePipeline() {
-        return remove(threadLocalConnectionPipelineMap, getCurrentConnection());
-    }
-
-    //*********************************************************************************
-    //*********************************************************************************
-    // Generic helper methods
-    //*********************************************************************************
-    //*********************************************************************************
-
-    private <K, V> void add(ThreadLocal<Map<K, V>> threadLocalMap, K key, V value) {
-        if(threadLocalMap.get() == null) {
-            threadLocalMap.set(new HashMap<K, V>());
-        }
-
-        threadLocalMap.get().put(key, value);
-    }
-
-    private <K, V> V remove(ThreadLocal<Map<K, V>> threadLocalMap, K key) {
-        final V value = threadLocalMap.get().remove(key);
-
-        if(threadLocalMap.get().isEmpty()) {
-            threadLocalMap.remove();
-        }
-
-        return value;
-    }
-
-    private <K, V> V get(ThreadLocal<Map<K, V>> threadLocalMap, K key) {
-        return threadLocalMap.get() != null ? threadLocalMap.get().get(key) : null;
-    }
-
-    private <V> void add(ThreadLocal<Stack<V>> threadLocalStack, V value) {
-        if(threadLocalStack.get() == null) {
-            threadLocalStack.set(new Stack<V>());
-        }
-
-        threadLocalStack.get().push(value);
-    }
-
-    private <V> V remove(ThreadLocal<Stack<V>> threadLocalStack) {
-        final V value = threadLocalStack.get().pop();
-
-        if(threadLocalStack.get().isEmpty()) {
-            threadLocalStack.remove();
-        }
-
-        return value;
-    }
-
-    private <V> V get(ThreadLocal<Stack<V>> threadLocalStack) {
-        return threadLocalStack.get() != null ? threadLocalStack.get().peek() : null;
+        return threadLocalConnectionPipelineMap.get().remove(getCurrentConnection());
     }
 }
