@@ -441,4 +441,9 @@ public class SortedSetCommandComplexEntityPipelinedService implements SortedSetC
     public Response<Boolean> unlock(@Nonnull Integer key) {
         return sortedSetCommandComplexEntityBinding.unlock(key);
     }
+
+    @Override
+    public Response<Status> watch(Integer... keys) {
+        return sortedSetCommandComplexEntityBinding.watch(keys);
+    }
 }

@@ -167,10 +167,7 @@
  */
 package com.github.eemmiirr.redisdata.session;
 
-import com.github.eemmiirr.redisdata.datamapper.DataMapper;
 import com.github.eemmiirr.redisdata.exception.session.SessionNotOpenExcpetion;
-
-import java.util.Map;
 
 /**
  * @author Emir Dizdarevic
@@ -179,9 +176,4 @@ import java.util.Map;
 public interface SessionFactory {
 
     <K, V> Session<K, V> getCurrentSession(Class<K> keyClass, Class<V> valueClass) throws SessionNotOpenExcpetion;
-
-    DataMapper getDefaultKeyDataMapper();
-    Map<Class, DataMapper> getKeyDataMappers();
-    DataMapper getDefaultValueDataMapper();
-    Map<Class, DataMapper> getValueDataMappers();
 }

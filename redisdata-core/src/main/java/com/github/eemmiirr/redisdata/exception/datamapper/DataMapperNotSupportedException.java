@@ -165,74 +165,28 @@
  * permanent authorization for you to choose that version for the
  * Library.
  */
-package com.github.eemmiirr.redisdata.transaction;
+package com.github.eemmiirr.redisdata.exception.datamapper;
 
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
+import com.github.eemmiirr.redisdata.datamapper.DataMapper;
 
 /**
  * @author Emir Dizdarevic
  * @since 0.7
  */
-public abstract class AbstractTransactionManger<C, T, P> implements TransactionManager<C, T, P> {
+public class DataMapperNotSupportedException extends DataMapperException {
 
-    private final ThreadLocal<Deque<C>> threadLocalConnectionStack = new ThreadLocal<Deque<C>>() {
-        @Override
-        protected Deque<C> initialValue() {
-            return new LinkedList<C>();
-        }
-    };
-    private final ThreadLocal<Map<C, T>> threadLocalConnectionTransactionMap = new ThreadLocal<Map<C, T>>() {
-        @Override
-        protected Map<C, T> initialValue() {
-            return new HashMap<C, T>();
-        }
-    };
-    private final ThreadLocal<Map<C, P>> threadLocalConnectionPipelineMap = new ThreadLocal<Map<C, P>>(){
-        @Override
-        protected Map<C, P> initialValue() {
-            return new HashMap<C, P>();
-        }
-    };
+    private final Class clazz;
+    private final DataMapper dataMapper;
 
-    @Override
-    public final C getCurrentConnection() {
-        return threadLocalConnectionStack.get().peek();
+    public DataMapperNotSupportedException(Class clazz, DataMapper dataMapper) {
+        super("Type " + clazz.getCanonicalName() + " is not supported by data mapper " + dataMapper.getClass().getCanonicalName());
+        this.clazz = clazz;
+        this.dataMapper = dataMapper;
     }
 
-    @Override
-    public final T getCurrentTransaction() {
-        return threadLocalConnectionTransactionMap.get().get(getCurrentConnection());
-    }
-
-    @Override
-    public final P getCurrentPipeline() {
-        return threadLocalConnectionPipelineMap.get().get(getCurrentConnection());
-    }
-
-    protected void addConnection(C connection) {
-        threadLocalConnectionStack.get().push(connection);
-    }
-
-    protected C removeConnection() {
-        return threadLocalConnectionStack.get().pop();
-    }
-
-    protected void mapTransaction(T trasaction) {
-        threadLocalConnectionTransactionMap.get().put(getCurrentConnection(), trasaction);
-    }
-
-    protected T removeTransaction() {
-        return threadLocalConnectionTransactionMap.get().remove(getCurrentConnection());
-    }
-
-    protected void mapPipeline(P pipeline) {
-        threadLocalConnectionPipelineMap.get().put(getCurrentConnection(), pipeline);
-    }
-
-    protected P removePipeline() {
-        return threadLocalConnectionPipelineMap.get().remove(getCurrentConnection());
+    public DataMapperNotSupportedException(Class clazz, DataMapper dataMapper, Exception e) {
+        super("Type " + clazz.getCanonicalName() + " is not supported by data mapper " + dataMapper.getClass().getCanonicalName(), e);
+        this.clazz = clazz;
+        this.dataMapper = dataMapper;
     }
 }

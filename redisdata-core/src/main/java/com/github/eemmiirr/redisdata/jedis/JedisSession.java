@@ -350,6 +350,11 @@ class JedisSession<K, V> extends AbstractSession<K, V> {
         return wrapInNumberToBooleanResponse(jedis.del(concat(LOCK_KEY_PREFIX, keyDataMapper.serialize(key))));
     }
 
+    @Override
+    public Response<Status> watch(K... keys) {
+        return wrapInParseableResponse(jedis.watch(transfromObjectArrayToByteArrays(keys, keyDataMapper)), Status.class);
+    }
+
     //***********************************************************************************************
     //***********************************************************************************************
     // String commands

@@ -167,8 +167,8 @@
  */
 package com.github.eemmiirr.redisdata.jedis.response;
 
-import com.github.eemmiirr.redisdata.exception.ClientException;
-import com.github.eemmiirr.redisdata.exception.DataNotReadyException;
+import com.github.eemmiirr.redisdata.exception.client.ClientException;
+import com.github.eemmiirr.redisdata.exception.transaction.DataNotReadyException;
 import com.github.eemmiirr.redisdata.response.Response;
 import com.github.eemmiirr.redisdata.response.Status;
 import redis.clients.jedis.exceptions.JedisDataException;

@@ -168,7 +168,7 @@
 package com.github.eemmiirr.redisdata.datamapper;
 
 import org.codehaus.jackson.map.ObjectMapper;
-import com.github.eemmiirr.redisdata.exception.DataMapperException;
+import com.github.eemmiirr.redisdata.exception.datamapper.DataMapperException;
 
 /**
  * @author Emir Dizdarevic

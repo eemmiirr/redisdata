@@ -382,4 +382,9 @@ public class HashCommandIntegerPipelinedTransactionalService implements HashComm
     public Response<Boolean> unlock(@Nonnull Integer key) {
         return hashCommandIntegerBinding.unlock(key);
     }
+
+    @Override
+    public Response<Status> watch(Integer... keys) {
+        return hashCommandIntegerBinding.watch(keys);
+    }
 }

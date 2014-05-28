@@ -170,7 +170,7 @@ package com.github.eemmiirr.redisdata.command;
 import com.google.common.base.Charsets;
 import com.github.eemmiirr.redisdata.AbstractRedisTest;
 import com.github.eemmiirr.redisdata.datamapper.JacksonJsonDataMapper;
-import com.github.eemmiirr.redisdata.exception.ClientException;
+import com.github.eemmiirr.redisdata.exception.client.ClientException;
 import com.github.eemmiirr.redisdata.request.ListPosition;
 import com.github.eemmiirr.redisdata.response.LPair;
 import com.github.eemmiirr.redisdata.response.Response;

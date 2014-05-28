@@ -434,4 +434,9 @@ public class StringCommandComplexEntityService implements StringCommand<Integer,
     public Response<Boolean> unlock(@Nonnull Integer key) {
         return stringCommandComplexEntityBinding.unlock(key);
     }
+
+    @Override
+    public Response<Status> watch(Integer... keys) {
+        return stringCommandComplexEntityBinding.watch(keys);
+    }
 }

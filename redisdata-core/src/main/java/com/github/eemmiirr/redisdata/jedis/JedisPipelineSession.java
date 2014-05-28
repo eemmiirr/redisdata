@@ -248,11 +248,13 @@ class JedisPipelineSession<K, V> extends AbstractSession<K, V> {
         }
     }
 
+    private final Jedis jedis;
     private final BinaryRedisPipeline binaryRedisPipeline;
     private final MultiKeyBinaryRedisPipeline multiKeyBinaryRedisPipeline;
     private final Object pipelineOrTransaction;
 
-    public JedisPipelineSession(BinaryRedisPipeline binaryRedisPipeline,
+    public JedisPipelineSession(Jedis jedis,
+                                BinaryRedisPipeline binaryRedisPipeline,
                                 MultiKeyBinaryRedisPipeline multiKeyBinaryRedisPipeline,
                                 Object pipelineOrTransaction,
                                 DataMapper<K> keyDataMapper,
@@ -260,6 +262,7 @@ class JedisPipelineSession<K, V> extends AbstractSession<K, V> {
                                 DataMapper<V> valueDataMapper,
                                 Class<V> valueClass) {
         super(keyDataMapper, keyClass, valueDataMapper, valueClass);
+        this.jedis = jedis;
         this.binaryRedisPipeline = binaryRedisPipeline;
         this.multiKeyBinaryRedisPipeline = multiKeyBinaryRedisPipeline;
         this.pipelineOrTransaction = pipelineOrTransaction;
@@ -394,6 +397,11 @@ class JedisPipelineSession<K, V> extends AbstractSession<K, V> {
     @Override
     public Response<Boolean> unlock(@Nonnull K key) {
         return wrapInNumberToBooleanResponse(binaryRedisPipeline.del(concat(LOCK_KEY_PREFIX, keyDataMapper.serialize(key))));
+    }
+
+    @Override
+    public Response<Status> watch(K... keys) {
+        return wrapInImmediateParseableResponse(jedis.watch(transfromObjectArrayToByteArrays(keys, keyDataMapper)), Status.class);
     }
 
     //***********************************************************************************************
@@ -986,6 +994,10 @@ class JedisPipelineSession<K, V> extends AbstractSession<K, V> {
 
     private <T> Response<T> wrapInParseableResponse(redis.clients.jedis.Response<String> response, Class<T> clazz) {
         return new JedisParseableResponse(new JedisPipelineResponse(response), clazz);
+    }
+
+    private <T> Response<T> wrapInImmediateParseableResponse(String response, Class<T> clazz) {
+        return new JedisParseableResponse(new JedisImmediateResponse<String>(response), clazz);
     }
 
     private Response<Boolean> wrapInNumberToBooleanResponse(redis.clients.jedis.Response<? extends Number> response) {

@@ -148,6 +148,16 @@
                 <artifactId>reflections</artifactId>
                 <version>0.9.5</version>
             </dependency>
+            <dependency>
+                <groupId>cglib</groupId>
+                <artifactId>cglib</artifactId>
+                <version>3.1</version>
+            </dependency>
+            <dependency>
+                <groupId>log4j</groupId>
+                <artifactId>log4j</artifactId>
+                <version>1.2.17</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -231,6 +241,20 @@
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <version>${maven-failsafe-plugin.version}</version>
                         <configuration>
+                            <argLine>-server -Xms512m -Xmx2048m
+                                -XX:+UseConcMarkSweepGC
+                                -XX:+CMSClassUnloadingEnabled
+                            </argLine>
+                            <systemProperties>
+                                <property>
+                                    <name>jub.consumers</name>
+                                    <value>CONSOLE,H2</value>
+                                </property>
+                                <property>
+                                    <name>jub.db.file</name>
+                                    <value>.benchmarks</value>
+                                </property>
+                            </systemProperties>
                             <includes>
                                 <include>**/*IntegrationTest.java</include>
                                 <include>**/*PerformanceTest.java</include>

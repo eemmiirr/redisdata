@@ -169,13 +169,15 @@ package com.github.eemmiirr.redisdata.session;
 
 import com.github.eemmiirr.redisdata.command.*;
 
+import javax.annotation.concurrent.NotThreadSafe;
+
 /**
- * Represents the current session to redis. The implementation is NOT THREAD SAFE.
+ * Represents the current redis session . The implementation is NOT THREAD SAFE.
  * Don't share it between threads. Use the SessionFactory to obtain the session.
  *
  * @author Emir Dizdarevic
  * @since 0.7
  */
+@NotThreadSafe
 public interface Session<K, V> extends KeyCommand<K, V>, StringCommand<K, V>, ListCommand<K, V>, SetCommand<K, V>, SortedSetCommand<K, V>, HashCommand<K, V> {
-
 }

@@ -165,26 +165,26 @@
  * permanent authorization for you to choose that version for the
  * Library.
  */
-package com.github.eemmiirr.redisdata.exception;
+package com.github.eemmiirr.redisdata.exception.transaction;
 
 /**
  * @author Emir Dizdarevic
  * @since 0.7
  */
-public class DataMapperException extends RedisDataException {
+public class DataNotReadyException extends TransactionManagerException {
 
-    public DataMapperException() {
+    public DataNotReadyException() {
     }
 
-    public DataMapperException(String message) {
+    public DataNotReadyException(String message) {
         super(message);
     }
 
-    public DataMapperException(String message, Throwable cause) {
+    public DataNotReadyException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public DataMapperException(Throwable cause) {
+    public DataNotReadyException(Throwable cause) {
         super(cause);
     }
 }

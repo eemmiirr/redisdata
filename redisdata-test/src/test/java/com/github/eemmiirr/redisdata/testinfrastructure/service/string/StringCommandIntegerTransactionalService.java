@@ -433,4 +433,9 @@ public class StringCommandIntegerTransactionalService implements StringCommand<I
     public Response<Boolean> unlock(@Nonnull Integer key) {
         return stringCommandIntegerBinding.unlock(key);
     }
+
+    @Override
+    public Response<Status> watch(Integer... keys) {
+        return stringCommandIntegerBinding.watch(keys);
+    }
 }

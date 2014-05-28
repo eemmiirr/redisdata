@@ -379,6 +379,14 @@ public class ArgumentCheckSessionDecorator<K, V> implements Session<K, V> {
         return decoratedSession.unlock(key);
     }
 
+    @Override
+    public Response<Status> watch(K... keys) {
+        checkNotNull(keys, "keys must not be null");
+        checkArgument(keys.length > 0, "keys must not be empty");
+
+        return decoratedSession.watch(keys);
+    }
+
     //***********************************************************************************************
     //***********************************************************************************************
     // String commands

@@ -167,7 +167,7 @@
  */
 package com.github.eemmiirr.redisdata.datamapper;
 
-import com.github.eemmiirr.redisdata.exception.DataMapperException;
+import com.github.eemmiirr.redisdata.exception.datamapper.DataMapperException;
 import de.ruedigermoeller.serialization.FSTConfiguration;
 import de.ruedigermoeller.serialization.FSTObjectInput;
 import de.ruedigermoeller.serialization.FSTObjectOutput;

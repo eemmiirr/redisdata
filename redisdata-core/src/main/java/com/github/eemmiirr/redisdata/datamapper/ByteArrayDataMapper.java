@@ -167,7 +167,7 @@
  */
 package com.github.eemmiirr.redisdata.datamapper;
 
-import com.github.eemmiirr.redisdata.exception.DataMapperException;
+import com.github.eemmiirr.redisdata.exception.datamapper.DataMapperException;
 
 /**
  * DataMapper which does actually nothing it just passes trough the data.

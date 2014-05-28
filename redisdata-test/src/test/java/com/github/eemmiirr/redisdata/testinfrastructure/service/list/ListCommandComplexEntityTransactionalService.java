@@ -415,4 +415,9 @@ public class ListCommandComplexEntityTransactionalService implements ListCommand
     public Response<Boolean> unlock(@Nonnull Integer key) {
         return listCommandComplexEntityBinding.unlock(key);
     }
+
+    @Override
+    public Response<Status> watch(Integer... keys) {
+        return listCommandComplexEntityBinding.watch(keys);
+    }
 }

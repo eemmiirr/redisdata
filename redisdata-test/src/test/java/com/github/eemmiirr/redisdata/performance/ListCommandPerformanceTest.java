@@ -165,140 +165,227 @@
  * permanent authorization for you to choose that version for the
  * Library.
  */
-package com.github.eemmiirr.redisdata.testinfrastructure.service.string;
+package com.github.eemmiirr.redisdata.performance;
 
-import com.github.eemmiirr.redisdata.annotation.RedisData;
-import com.github.eemmiirr.redisdata.command.ListCommand;
-import com.github.eemmiirr.redisdata.command.StringCommand;
-import com.github.eemmiirr.redisdata.response.Response;
+import com.carrotsearch.junitbenchmarks.BenchmarkOptions;
+import com.carrotsearch.junitbenchmarks.BenchmarkRule;
+import com.carrotsearch.junitbenchmarks.annotation.BenchmarkHistoryChart;
+import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
+import com.carrotsearch.junitbenchmarks.annotation.LabelType;
+import org.junit.*;
+import org.junit.rules.TestRule;
+import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Pipeline;
+import redis.clients.jedis.Response;
+import redis.clients.jedis.Transaction;
+import redis.embedded.RedisServer;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 
 /**
  * @author Emir Dizdarevic
  * @since 0.7
  */
-public class CommandPerformanceService {
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration("classpath:integrationTestContext.xml")
+@BenchmarkMethodChart(filePrefix = "list-command-benchmark-lists")
+@BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 0, concurrency = BenchmarkOptions.CONCURRENCY_AVAILABLE_CORES)
+public class ListCommandPerformanceTest {
+
+    private static final Random random = new Random();
+    private static final int count = 100000;
+
+    private static RedisServer redisServer;
+    protected ThreadLocal<Jedis> jedisThreadLocal = new ThreadLocal<Jedis>();
+
+    @Rule
+    public TestRule benchmarkRun = new BenchmarkRule();
 
     @Autowired
-    @Qualifier("stringCommandIntegerBinding")
-    private StringCommand<Integer, Integer> stringCommandIntegerBinding;
+    private CommandPerformanceService commandPerformanceService;
 
-    @Autowired
-    @Qualifier("listCommandIntegerBinding")
-    private ListCommand<Integer, Integer> listCommandIntegerBinding;
+    @BeforeClass
+    public static final void initClass() throws Exception {
+        redisServer = new RedisServer("2.8.5", 6379);
+        redisServer.start();
 
-    @RedisData
-    public void set(int count) {
-        setInternal(count);
+        while (!redisServer.isActive()) ;
     }
 
-    @RedisData(pipelined = true)
-    public void setPipelined(int count) {
-        setInternal(count);
+    @AfterClass
+    public static final void destroyClass() throws Exception {
+        redisServer.stop();
     }
 
-    @RedisData(transactional = true)
-    public void setTransactional(int count) {
-        setInternal(count);
+    @Before
+    public final void init() throws Exception {
+        final Jedis jedis = new Jedis("localhost", 6379);
+        jedis.flushAll();
+        jedisThreadLocal.set(jedis);
     }
 
-    @RedisData(pipelined = true, transactional = true)
-    public void setPipelinedTransaction(int count) {
-        setInternal(count);
+    @After
+    public final void destroy() throws Exception {
+        jedisThreadLocal.get().quit();
+        jedisThreadLocal.remove();
     }
 
-    private void setInternal(int count) {
+    private void prepareDataForLPop(Integer key) {
+        final Pipeline pipeline = jedisThreadLocal.get().pipelined();
+        pipeline.multi();
         for (int i = 0; i < count; i++) {
-            stringCommandIntegerBinding.set(i, i);
+            pipeline.rpush(String.valueOf(key), String.valueOf(i));
+        }
+
+        pipeline.exec();
+        pipeline.syncAndReturnAll();
+    }
+
+    @Test
+    public void testLPushPerformanceJedis() {
+        final int key = random.nextInt();
+        for (int i = 0; i < count; i++) {
+            jedisThreadLocal.get().lpush(String.valueOf(key), String.valueOf(i));
         }
     }
 
-    @RedisData
-    public List<Response> get(int count) {
-        return getInternal(count);
+    @Test
+    public void testLPushPipelinedPerformanceJedis() {
+        final int key = random.nextInt();
+        final Pipeline pipeline = jedisThreadLocal.get().pipelined();
+        for (int i = 0; i < count; i++) {
+            pipeline.lpush(String.valueOf(key), String.valueOf(i));
+        }
+        pipeline.syncAndReturnAll();
     }
 
-    @RedisData(pipelined = true)
-    public List<Response> getPipelined(int count) {
-        return getInternal(count);
+    @Test
+    public void testLPushTransactionPerformanceJedis() {
+        final int key = random.nextInt();
+        final Transaction tx = jedisThreadLocal.get().multi();
+        for (int i = 0; i < count; i++) {
+            tx.lpush(String.valueOf(key), String.valueOf(i));
+        }
+        tx.exec();
     }
 
-    @RedisData(transactional = true)
-    public List<Response> getTransactional(int count) {
-        return getInternal(count);
+    @Test
+    public void testLPushPipelinedTransactionPerformanceJedis() {
+        final int key = random.nextInt();
+        final Pipeline pipeline = jedisThreadLocal.get().pipelined();
+        pipeline.multi();
+        for (int i = 0; i < count; i++) {
+            pipeline.lpush(String.valueOf(key), String.valueOf(i));
+        }
+
+        pipeline.exec();
+        pipeline.syncAndReturnAll();
     }
 
-    @RedisData(pipelined = true, transactional = true)
-    public List<Response> getPipelinedTransaction(int count) {
-        return getInternal(count);
+    @Test
+    public void testLPopPerformanceJedis() {
+        final int key = random.nextInt();
+        prepareDataForLPop(key);
+        final List<String> responses = new LinkedList<String>();
+        for (int i = 0; i < count; i++) {
+            responses.add(jedisThreadLocal.get().lpop(String.valueOf(key)));
+        }
     }
 
-    private List<Response> getInternal(int count) {
-
+    @Test
+    public void testLPopPipelinedPerformanceJedis() {
+        final int key = random.nextInt();
+        prepareDataForLPop(key);
         final List<Response> responses = new LinkedList<Response>();
+        final Pipeline pipeline = jedisThreadLocal.get().pipelined();
         for (int i = 0; i < count; i++) {
-            responses.add(stringCommandIntegerBinding.get(i));
+            responses.add(pipeline.lpop(String.valueOf(key)));
         }
-
-        return responses;
+        pipeline.syncAndReturnAll();
     }
 
-    @RedisData
-    public void lPush(int count) {
-        lPushInternal(count);
-    }
-
-    @RedisData(pipelined = true)
-    public void lPushPipelined(int count) {
-        lPushInternal(count);
-    }
-
-    @RedisData(transactional = true)
-    public void lPushTransactional(int count) {
-        lPushInternal(count);
-    }
-
-    @RedisData(pipelined = true, transactional = true)
-    public void lPushPipelinedTransaction(int count) {
-        lPushInternal(count);
-    }
-
-    private void lPushInternal(int count) {
-        for (int i = 0; i < count; i++) {
-            listCommandIntegerBinding.lPush(i, i);
-        }
-    }
-
-    @RedisData
-    public List<Response> lpop(int count) {
-        return lpopInternal(count);
-    }
-
-    @RedisData(pipelined = true)
-    public List<Response> lpopPipelined(int count) {
-        return lpopInternal(count);
-    }
-
-    @RedisData(transactional = true)
-    public List<Response> lpopTransactional(int count) {
-        return lpopInternal(count);
-    }
-
-    @RedisData(pipelined = true, transactional = true)
-    public List<Response> lpopPipelinedTransaction(int count) {
-        return lpopInternal(count);
-    }
-
-    private List<Response> lpopInternal(int count) {
+    @Test
+    public void testLPopTransactionPerformanceJedis() {
+        final int key = random.nextInt();
+        prepareDataForLPop(key);
         final List<Response> responses = new LinkedList<Response>();
+        final Transaction tx = jedisThreadLocal.get().multi();
         for (int i = 0; i < count; i++) {
-            responses.add(listCommandIntegerBinding.lPop(i));
+            responses.add(tx.lpop(String.valueOf(key)));
+        }
+        tx.exec();
+    }
+
+    @Test
+    public void testLPopPipelinedTransactionPerformanceJedis() {
+        final int key = random.nextInt();
+        prepareDataForLPop(key);
+        final List<Response> responses = new LinkedList<Response>();
+        final Pipeline pipeline = jedisThreadLocal.get().pipelined();
+        pipeline.multi();
+        for (int i = 0; i < count; i++) {
+            responses.add(pipeline.lpop(String.valueOf(key)));
         }
 
-        return responses;
+        pipeline.exec();
+        pipeline.syncAndReturnAll();
+    }
+
+    @Test
+    public void testLPushPerformanceRedisData() {
+        final int key = random.nextInt();
+        commandPerformanceService.lPush(key, count);
+    }
+
+    @Test
+    public void testLPushPipelinedPerformanceRedisData() {
+        final int key = random.nextInt();
+        commandPerformanceService.lPushPipelined(key, count);
+    }
+
+    @Test
+    public void testLPushTransactionPerformanceRedisData() {
+        final int key = random.nextInt();
+        commandPerformanceService.lPushTransaction(key, count);
+    }
+
+    @Test
+    public void testLPushPipelinedTransactionPerformanceRedisData() {
+        final int key = random.nextInt();
+        commandPerformanceService.lPushPipelinedTransaction(key, count);
+    }
+
+    @Test
+    public void testLPopPerformanceRedisData() {
+        final int key = random.nextInt();
+        prepareDataForLPop(key);
+        commandPerformanceService.lpop(key, count);
+    }
+
+    @Test
+    public void testLPopPipelinedPerformanceRedisData() {
+        final int key = random.nextInt();
+        prepareDataForLPop(key);
+        commandPerformanceService.lpopPipelined(key, count);
+    }
+
+    @Test
+    public void testLPopTransactionPerformanceRedisData() {
+        final int key = random.nextInt();
+        prepareDataForLPop(key);
+        commandPerformanceService.lpopTransaction(key, count);
+    }
+
+    @Test
+    public void testLPopPipelinedTransactionPerformanceRedisData() {
+        final int key = random.nextInt();
+        prepareDataForLPop(key);
+        commandPerformanceService.lpopPipelinedTransaction(key, count);
     }
 }

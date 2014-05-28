@@ -165,71 +165,14 @@
  * permanent authorization for you to choose that version for the
  * Library.
  */
-package com.github.eemmiirr.redisdata.jedis;
-
-import com.github.eemmiirr.redisdata.exception.transaction.DataNotReadyException;
-import com.google.common.base.Charsets;
-import com.github.eemmiirr.redisdata.AbstractRedisTest;
-import com.github.eemmiirr.redisdata.command.KeyCommand;
-import com.github.eemmiirr.redisdata.exception.client.ClientException;
-import com.github.eemmiirr.redisdata.exception.session.SessionNotOpenExcpetion;
-import com.github.eemmiirr.redisdata.response.Status;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
+package com.github.eemmiirr.redisdata.datamapper;
 
 /**
  * @author Emir Dizdarevic
- * @since 0.7
+ * @since 0.8
  */
-@RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration("classpath:integrationTestContext.xml")
-public class JedisIntegrationTest extends AbstractRedisTest {
+public interface DataMapperResolver {
 
-    @Autowired
-    private KeyCommand<Integer, Integer> keyCommandIntegerService;
-
-    @Autowired
-    private JedisIntegrationService jedisIntegrationService;
-
-    @Autowired
-    private KeyCommand<Integer, Integer> keyCommandIntegerBinding;
-
-    @Test
-    public void testClientException() throws Exception {
-        try {
-            keyCommandIntegerService.restore(1000, new byte[0], -1);
-        } catch (ClientException e) {
-            assertThat(e.getStatus().getType(), is(Status.Type.ERR));
-        }
-    }
-
-    @Test(expected = SessionNotOpenExcpetion.class)
-    public void testSessionNotOpenExcpetion() throws Exception {
-        keyCommandIntegerBinding.keys("*", Charsets.UTF_8);
-    }
-
-    public void testDataNotReadyExceptionNotThrown() throws Exception {
-        assertThat(jedisIntegrationService.accessData(), is(false));
-    }
-
-    @Test(expected = DataNotReadyException.class)
-    public void testDataNotReadyExceptionTransactional() throws Exception {
-        jedisIntegrationService.accessDataTransactional();
-    }
-
-    @Test(expected = DataNotReadyException.class)
-    public void testDataNotReadyExceptionPipelined() throws Exception {
-        jedisIntegrationService.accessDataPipelined();
-    }
-
-    @Test(expected = DataNotReadyException.class)
-    public void testDataNotReadyExceptionTransactionalAndPipelined() throws Exception {
-        jedisIntegrationService.accessDataPipelinedAndTransactional();
-    }
+    <K> DataMapper<K> getKeyDataMapper(Class<K> clazz);
+    <V> DataMapper<V> getValueDataMapper(Class<V> clazz);
 }
