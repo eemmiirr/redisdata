@@ -174,6 +174,7 @@ import com.github.eemmiirr.redisdata.command.KeyCommand;
 import com.github.eemmiirr.redisdata.exception.client.ClientException;
 import com.github.eemmiirr.redisdata.exception.session.SessionNotOpenExcpetion;
 import com.github.eemmiirr.redisdata.response.Status;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -231,5 +232,107 @@ public class JedisIntegrationTest extends AbstractRedisTest {
     @Test(expected = DataNotReadyException.class)
     public void testDataNotReadyExceptionTransactionalAndPipelined() throws Exception {
         jedisIntegrationService.accessDataPipelinedAndTransactional();
+    }
+
+    @Test
+    public void testWatchOnly() throws Exception {
+        assertThat(jedisIntegrationService.watchOnly().get().getType(), is(Status.Type.OK));
+    }
+
+    @Test
+    public void testWatchOnlyPipelined() throws Exception {
+        assertThat(jedisIntegrationService.watchOnlyPipeline().get().getType(), is(Status.Type.OK));
+    }
+
+    @Test
+    public void testWatchOnlyTransactional() throws Exception {
+        assertThat(jedisIntegrationService.watchOnlyTransactional().get().getType(), is(Status.Type.OK));
+    }
+
+    @Test
+    public void testWatchOnlyPipelinedAndTransactional() throws Exception {
+        assertThat(jedisIntegrationService.watchOnlyPipelinedAndTransactional().get().getType(), is(Status.Type.OK));
+    }
+
+    @Test
+    public void testWatchWithSingleCommandBefore() throws Exception {
+        assertThat(jedisIntegrationService.watchWithSingleCommandBefore().get(), is(false));
+    }
+
+    @Test
+    public void testWatchWithSingleCommandBeforePipelined() throws Exception {
+        assertThat(jedisIntegrationService.watchWithSingleCommandBeforePipeline().get(), is(false));
+    }
+
+    @Test
+    public void testWatchWithSingleCommandBeforeTransactional() throws Exception {
+        assertThat(jedisIntegrationService.watchWithSingleCommandBeforeTransactional().get(), is(false));
+    }
+
+    @Test
+    public void testWatchWithSingleCommandBeforePipelinedAndTransactional() throws Exception {
+        assertThat(jedisIntegrationService.watchWithSingleCommandBeforePipelinedAndTransactional().get(), is(false));
+    }
+
+    @Test
+    public void testWatchWithSingleCommandAfter() throws Exception {
+        assertThat(jedisIntegrationService.watchWithSingleCommandAfter().get(), is(false));
+    }
+
+    @Test
+    @Ignore("Jedis has a bug when calling watch() after a key command")
+    public void testWatchWithSingleCommandAfterPipelined() throws Exception {
+        assertThat(jedisIntegrationService.watchWithSingleCommandAfterPipeline().get(), is(false));
+    }
+
+    @Test
+    public void testWatchWithSingleCommandAfterTransactional() throws Exception {
+        assertThat(jedisIntegrationService.watchWithSingleCommandAfterTransactional().get(), is(false));
+    }
+
+    @Test
+    public void testWatchWithSingleCommandAfterPipelinedAndTransactional() throws Exception {
+        assertThat(jedisIntegrationService.watchWithSingleCommandAfterPipelinedAndTransactional().get(), is(false));
+    }
+
+    @Test
+    public void testWatchWithMultipleCommandBefore() throws Exception {
+        assertThat(jedisIntegrationService.watchWithMultipleCommandBefore().get(), is(true));
+    }
+
+    @Test
+    public void testWatchWithMultipleCommandBeforePipelined() throws Exception {
+        assertThat(jedisIntegrationService.watchWithMultipleCommandBeforePipeline().get(), is(true));
+    }
+
+    @Test
+    public void testWatchWithMultipleCommandBeforeTransactional() throws Exception {
+        assertThat(jedisIntegrationService.watchWithMultipleCommandBeforeTransactional().get(), is(true));
+    }
+
+    @Test
+    public void testWatchWithMultipleCommandBeforePipelinedAndTransactional() throws Exception {
+        assertThat(jedisIntegrationService.watchWithMultipleCommandBeforePipelinedAndTransactional().get(), is(true));
+    }
+
+    @Test
+    public void testWatchWithMultipleCommandAfter() throws Exception {
+        assertThat(jedisIntegrationService.watchWithMultipleCommandAfter().get(), is(true));
+    }
+
+    @Test
+    @Ignore("Jedis has a bug when calling watch() after a key command")
+    public void testWatchWithMultipleCommandAfterPipelined() throws Exception {
+        assertThat(jedisIntegrationService.watchWithMultipleCommandAfterPipeline().get(), is(true));
+    }
+
+    @Test
+    public void testWatchWithMultipleCommandAfterTransactional() throws Exception {
+        assertThat(jedisIntegrationService.watchWithMultipleCommandAfterTransactional().get(), is(true));
+    }
+
+    @Test
+    public void testWatchWithMultipleCommandAfterPipelinedAndTransactional() throws Exception {
+        assertThat(jedisIntegrationService.watchWithMultipleCommandAfterPipelinedAndTransactional().get(), is(true));
     }
 }

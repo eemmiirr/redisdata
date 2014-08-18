@@ -169,7 +169,9 @@ package com.github.eemmiirr.redisdata.jedis;
 
 import com.github.eemmiirr.redisdata.annotation.RedisData;
 import com.github.eemmiirr.redisdata.command.KeyCommand;
+import com.github.eemmiirr.redisdata.command.ListCommand;
 import com.github.eemmiirr.redisdata.response.Response;
+import com.github.eemmiirr.redisdata.response.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
@@ -183,6 +185,10 @@ public class JedisIntegrationService {
     @Autowired
     @Qualifier("keyCommandIntegerBinding")
     private KeyCommand<Integer, Integer> keyCommandIntegerBinding;
+
+    @Autowired
+    @Qualifier("listCommandIntegerBinding")
+    private ListCommand<Integer, Integer> listCommandIntegerBinding;
 
     public boolean accessData() {
         final Response<Boolean> response = keyCommandIntegerBinding.exists(123);
@@ -205,5 +211,130 @@ public class JedisIntegrationService {
     public boolean accessDataPipelinedAndTransactional() {
         final Response<Boolean> response = keyCommandIntegerBinding.exists(123);
         return response.get();
+    }
+
+    public Response<Status> watchOnly() {
+        return watchOnlyInternal();
+    }
+
+    @RedisData(pipelined = true)
+    public Response<Status> watchOnlyPipeline() {
+        return watchOnlyInternal();
+    }
+
+    @RedisData(transactional = true)
+    public Response<Status> watchOnlyTransactional() {
+        return watchOnlyInternal();
+    }
+
+    @RedisData(pipelined = true, transactional = true)
+    public Response<Status> watchOnlyPipelinedAndTransactional() {
+        return watchOnlyInternal();
+    }
+
+    public Response<Status> watchOnlyInternal() {
+        return keyCommandIntegerBinding.watch(123);
+    }
+
+    public Response<Boolean> watchWithSingleCommandBefore() {
+        return watchWithSingleCommandBeforeInternal();
+    }
+
+    @RedisData(pipelined = true)
+    public Response<Boolean> watchWithSingleCommandBeforePipeline() {
+        return watchWithSingleCommandBeforeInternal();
+    }
+
+    @RedisData(transactional = true)
+    public Response<Boolean> watchWithSingleCommandBeforeTransactional() {
+        return watchWithSingleCommandBeforeInternal();
+    }
+
+    @RedisData(pipelined = true, transactional = true)
+    public Response<Boolean> watchWithSingleCommandBeforePipelinedAndTransactional() {
+        return watchWithSingleCommandBeforeInternal();
+    }
+
+    public Response<Boolean> watchWithSingleCommandBeforeInternal() {
+        keyCommandIntegerBinding.watch(123);
+        return keyCommandIntegerBinding.exists(123);
+    }
+
+    public Response<Boolean> watchWithSingleCommandAfter() {
+        return watchWithSingleCommandAfterInternal();
+    }
+
+    @RedisData(pipelined = true)
+    public Response<Boolean> watchWithSingleCommandAfterPipeline() {
+        return watchWithSingleCommandAfterInternal();
+    }
+
+    @RedisData(transactional = true)
+    public Response<Boolean> watchWithSingleCommandAfterTransactional() {
+        return watchWithSingleCommandAfterInternal();
+    }
+
+    @RedisData(pipelined = true, transactional = true)
+    public Response<Boolean> watchWithSingleCommandAfterPipelinedAndTransactional() {
+        return watchWithSingleCommandAfterInternal();
+    }
+
+    public Response<Boolean> watchWithSingleCommandAfterInternal() {
+        final Response<Boolean> response = keyCommandIntegerBinding.del(123);
+        keyCommandIntegerBinding.watch(123);
+        return response;
+    }
+
+    public Response<Boolean> watchWithMultipleCommandBefore() {
+        return watchWithMultipleCommandBeforeInternal();
+    }
+
+    @RedisData(pipelined = true)
+    public Response<Boolean> watchWithMultipleCommandBeforePipeline() {
+        return watchWithMultipleCommandBeforeInternal();
+    }
+
+    @RedisData(transactional = true)
+    public Response<Boolean> watchWithMultipleCommandBeforeTransactional() {
+        return watchWithMultipleCommandBeforeInternal();
+    }
+
+    @RedisData(pipelined = true, transactional = true)
+    public Response<Boolean> watchWithMultipleCommandBeforePipelinedAndTransactional() {
+        return watchWithMultipleCommandBeforeInternal();
+    }
+
+    public Response<Boolean> watchWithMultipleCommandBeforeInternal() {
+        keyCommandIntegerBinding.watch(123);
+        listCommandIntegerBinding.lPush(123, 1, 2);
+        listCommandIntegerBinding.lPush(123, 3, 4);
+        return listCommandIntegerBinding.exists(123);
+    }
+
+    public Response<Boolean> watchWithMultipleCommandAfter() {
+        return watchWithMultipleCommandAfterInternal();
+    }
+
+    @RedisData(pipelined = true)
+    public Response<Boolean> watchWithMultipleCommandAfterPipeline() {
+        return watchWithMultipleCommandAfterInternal();
+    }
+
+    @RedisData(transactional = true)
+    public Response<Boolean> watchWithMultipleCommandAfterTransactional() {
+        return watchWithMultipleCommandAfterInternal();
+    }
+
+    @RedisData(pipelined = true, transactional = true)
+    public Response<Boolean> watchWithMultipleCommandAfterPipelinedAndTransactional() {
+        return watchWithMultipleCommandAfterInternal();
+    }
+
+    public Response<Boolean> watchWithMultipleCommandAfterInternal() {
+        listCommandIntegerBinding.lPush(123, 1, 2);
+        listCommandIntegerBinding.lPush(123, 3, 4);
+        final Response<Boolean> response = listCommandIntegerBinding.exists(123);
+        keyCommandIntegerBinding.watch(123);
+        return response;
     }
 }
