@@ -167,11 +167,8 @@
  */
 package com.github.eemmiirr.redisdata.signalizer;
 
-import com.github.eemmiirr.redisdata.exception.ClientException;
 import com.github.eemmiirr.redisdata.annotation.RedisData;
-import com.github.eemmiirr.redisdata.response.Status;
 import com.github.eemmiirr.redisdata.transaction.TransactionManager;
-import redis.clients.jedis.exceptions.JedisException;
 
 import java.lang.reflect.Method;
 
@@ -225,10 +222,6 @@ public abstract class AbstractRedisDataSignalizer {
         }
 
         transactionManager.discardConnection(throwable);
-
-        if(throwable instanceof JedisException) {
-            throw new ClientException(Status.parse(throwable.getMessage()), "Something went wrong with the underlying redis client.", throwable);
-        }
     }
 
     protected RedisData retrieveRedisTransactionalAnnotation(Method method) {

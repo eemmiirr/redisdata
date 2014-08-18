@@ -392,4 +392,9 @@ public class SetCommandComplexEntityService implements SetCommand<Integer, Compl
     public Response<Boolean> unlock(@Nonnull Integer key) {
         return setCommandComplexEntityBinding.unlock(key);
     }
+
+    @Override
+    public Response<Status> watch(Integer... keys) {
+        return setCommandComplexEntityBinding.watch(keys);
+    }
 }

@@ -433,4 +433,9 @@ public class StringCommandIntegerService implements StringCommand<Integer, Integ
     public Response<Boolean> unlock(@Nonnull Integer key) {
         return stringCommandIntegerBinding.unlock(key);
     }
+
+    @Override
+    public Response<Status> watch(Integer... keys) {
+        return stringCommandIntegerBinding.watch(keys);
+    }
 }

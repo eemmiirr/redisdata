@@ -165,71 +165,136 @@
  * permanent authorization for you to choose that version for the
  * Library.
  */
-package com.github.eemmiirr.redisdata.jedis;
+package com.github.eemmiirr.redisdata.datamapper;
 
-import com.github.eemmiirr.redisdata.exception.transaction.DataNotReadyException;
-import com.google.common.base.Charsets;
-import com.github.eemmiirr.redisdata.AbstractRedisTest;
-import com.github.eemmiirr.redisdata.command.KeyCommand;
-import com.github.eemmiirr.redisdata.exception.client.ClientException;
-import com.github.eemmiirr.redisdata.exception.session.SessionNotOpenExcpetion;
-import com.github.eemmiirr.redisdata.response.Status;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import com.github.eemmiirr.redisdata.exception.datamapper.DataMapperNotSupportedException;
 
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
+import java.util.HashMap;
+import java.util.Map;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * @author Emir Dizdarevic
- * @since 0.7
+ * @since 0.8
  */
-@RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration("classpath:integrationTestContext.xml")
-public class JedisIntegrationTest extends AbstractRedisTest {
+public class DefaultDataMapperResolver implements DataMapperResolver {
 
-    @Autowired
-    private KeyCommand<Integer, Integer> keyCommandIntegerService;
+    private final DataMapper defaultKeyDataMapper;
+    private final DataMapper defaultValueDataMapper;
+    private final Map<Class, DataMapper> keyDataMappers;
+    private final Map<Class, DataMapper> valueDataMappers;
 
-    @Autowired
-    private JedisIntegrationService jedisIntegrationService;
+    private DefaultDataMapperResolver(DataMapper defaultKeyDataMapper,
+                                      DataMapper defaultValueDataMapper,
+                                      Map<Class, DataMapper> keyDataMappers,
+                                      Map<Class, DataMapper> valueDataMappers) {
+        this.defaultKeyDataMapper = defaultKeyDataMapper;
+        this.defaultValueDataMapper = defaultValueDataMapper;
+        this.keyDataMappers = keyDataMappers;
+        this.valueDataMappers = valueDataMappers;
+        checkDataMappers();
+    }
 
-    @Autowired
-    private KeyCommand<Integer, Integer> keyCommandIntegerBinding;
+    @Override
+    public <K> DataMapper<K> getKeyDataMapper(Class<K> clazz) {
+        return resolveKeyDataMapper(clazz);
+    }
 
-    @Test
-    public void testClientException() throws Exception {
-        try {
-            keyCommandIntegerService.restore(1000, new byte[0], -1);
-        } catch (ClientException e) {
-            assertThat(e.getStatus().getType(), is(Status.Type.ERR));
+    @Override
+    public <V> DataMapper<V> getValueDataMapper(Class<V> clazz) {
+        return resolveValueDataMapper(clazz);
+    }
+
+    public static Builder builder(DataMapper defaultKeyDataMapper, DataMapper defaultValueDataMapper) {
+        checkNotNull(defaultKeyDataMapper, "defaultKeyDataMapper must not be null");
+        checkNotNull(defaultValueDataMapper, "defaultValueDataMapper must not be null");
+
+        return new Builder(defaultKeyDataMapper, defaultValueDataMapper);
+    }
+
+    public static class Builder<K, V> {
+        private final DataMapper defaultKeyDataMapper;
+        private final DataMapper defaultValueDataMapper;
+        private Map<Class, DataMapper> keyDataMappers = new HashMap<Class, DataMapper>();
+        private Map<Class, DataMapper> valueDataMappers = new HashMap<Class, DataMapper>();
+
+        private Builder(DataMapper<K> defaultKeyDataMapper, DataMapper<V> defaultValueDataMapper) {
+            this.defaultKeyDataMapper = defaultKeyDataMapper;
+            this.defaultValueDataMapper = defaultValueDataMapper;
+        }
+
+        public Builder withKeyDataMapper(Class clazz, DataMapper dataMapper) {
+            keyDataMappers.put(clazz, dataMapper);
+            return this;
+        }
+
+        public Builder withValueDataMapper(Class clazz, DataMapper dataMapper) {
+            valueDataMappers.put(clazz, dataMapper);
+            return this;
+        }
+
+        public DefaultDataMapperResolver build() {
+            return new DefaultDataMapperResolver(defaultKeyDataMapper, defaultValueDataMapper, keyDataMappers, valueDataMappers);
         }
     }
 
-    @Test(expected = SessionNotOpenExcpetion.class)
-    public void testSessionNotOpenExcpetion() throws Exception {
-        keyCommandIntegerBinding.keys("*", Charsets.UTF_8);
+    //*********************************************************************************
+    //*********************************************************************************
+    // PRIVATE HELPER METHODS
+    //*********************************************************************************
+    //*********************************************************************************
+
+    private void checkDataMappers() {
+
+        // Check key data mappers
+        for (Map.Entry<Class, DataMapper> entry : keyDataMappers.entrySet()) {
+            final Class clazz = entry.getKey();
+            final DataMapper dataMapper = entry.getValue();
+            if (!dataMapper.isSupported(clazz)) {
+                throw new DataMapperNotSupportedException(clazz, dataMapper);
+            };
+        }
+
+        // Check value data mappers
+        for (Map.Entry<Class, DataMapper> entry : valueDataMappers.entrySet()) {
+            final Class clazz = entry.getKey();
+            final DataMapper dataMapper = entry.getValue();
+            if (!dataMapper.isSupported(clazz)) {
+                throw new DataMapperNotSupportedException(clazz, dataMapper);
+            };
+        }
+
     }
 
-    public void testDataNotReadyExceptionNotThrown() throws Exception {
-        assertThat(jedisIntegrationService.accessData(), is(false));
+    private <K> DataMapper<K> resolveKeyDataMapper(Class<K> clazz) {
+        return getDataMapper(clazz, defaultKeyDataMapper, keyDataMappers);
     }
 
-    @Test(expected = DataNotReadyException.class)
-    public void testDataNotReadyExceptionTransactional() throws Exception {
-        jedisIntegrationService.accessDataTransactional();
+    private <V> DataMapper<V> resolveValueDataMapper(Class<V> clazz) {
+        return getDataMapper(clazz, defaultValueDataMapper, valueDataMappers);
     }
 
-    @Test(expected = DataNotReadyException.class)
-    public void testDataNotReadyExceptionPipelined() throws Exception {
-        jedisIntegrationService.accessDataPipelined();
+    private DataMapper getDataMapper(Class clazz, DataMapper defaultDataMapper, Map<Class, DataMapper> dataMappers) {
+        return dataMappers.containsKey(clazz) ? dataMappers.get(clazz) : defaultDataMapper;
     }
 
-    @Test(expected = DataNotReadyException.class)
-    public void testDataNotReadyExceptionTransactionalAndPipelined() throws Exception {
-        jedisIntegrationService.accessDataPipelinedAndTransactional();
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        DefaultDataMapperResolver that = (DefaultDataMapperResolver) o;
+
+        if (defaultKeyDataMapper != null ? !defaultKeyDataMapper.equals(that.defaultKeyDataMapper) : that.defaultKeyDataMapper != null)
+            return false;
+        if (defaultValueDataMapper != null ? !defaultValueDataMapper.equals(that.defaultValueDataMapper) : that.defaultValueDataMapper != null)
+            return false;
+        if (keyDataMappers != null ? !keyDataMappers.equals(that.keyDataMappers) : that.keyDataMappers != null)
+            return false;
+        if (valueDataMappers != null ? !valueDataMappers.equals(that.valueDataMappers) : that.valueDataMappers != null)
+            return false;
+
+        return true;
     }
 }

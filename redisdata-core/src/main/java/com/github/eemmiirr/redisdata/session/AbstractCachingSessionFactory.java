@@ -165,108 +165,55 @@
  * permanent authorization for you to choose that version for the
  * Library.
  */
-package com.github.eemmiirr.redisdata.transaction;
+package com.github.eemmiirr.redisdata.session;
 
-import java.util.HashMap;
+import com.github.eemmiirr.redisdata.exception.session.SessionNotOpenExcpetion;
+import com.github.eemmiirr.redisdata.transaction.TransactionManager;
+import com.google.common.collect.MapMaker;
+
 import java.util.Map;
-import java.util.Stack;
 
 /**
  * @author Emir Dizdarevic
- * @since 0.7
+ * @since 0.8
  */
-public abstract class AbstractTransactionManger<C, T, P> implements TransactionManager<C, T, P> {
+public abstract class AbstractCachingSessionFactory implements SessionFactory {
 
-    private final ThreadLocal<Stack<C>> threadLocalConnectionStack = new ThreadLocal<Stack<C>>();
-    private final ThreadLocal<Map<C, T>> threadLocalConnectionTransactionMap = new ThreadLocal<Map<C, T>>();
-    private final ThreadLocal<Map<C, P>> threadLocalConnectionPipelineMap = new ThreadLocal<Map<C, P>>();
+    private static final Map sessionCache = new MapMaker().weakValues().makeMap();
+    private final TransactionManager transactionManager;
 
-    @Override
-    public C getCurrentConnection() {
-        return get(threadLocalConnectionStack);
+    protected AbstractCachingSessionFactory(TransactionManager transactionManager) {
+        this.transactionManager = transactionManager;
     }
 
     @Override
-    public T getCurrentTransaction() {
-        return get(threadLocalConnectionTransactionMap, getCurrentConnection());
+    public final <K, V> Session<K, V> getCurrentSession(Class<K> keyClass, Class<V> valueClass) throws SessionNotOpenExcpetion {
+        final int sessionKey = calculateSessionKey(transactionManager.getCurrentConnection(), transactionManager.getCurrentPipeline(), transactionManager.getCurrentTransaction(), keyClass, valueClass);
+        Session<K, V> session = (Session<K, V>) sessionCache.get(sessionKey);
+        if(session == null) {
+            session = createSession(keyClass, valueClass);
+            sessionCache.put(sessionKey, session);
+        }
+
+        return session;
     }
 
-    @Override
-    public P getCurrentPipeline() {
-        return get(threadLocalConnectionPipelineMap, getCurrentConnection());
-    }
-
-    protected void addConnection(C connection) {
-        add(threadLocalConnectionStack, connection);
-    }
-
-    protected C removeConnection() {
-        return remove(threadLocalConnectionStack);
-    }
-
-    protected void mapTransaction(T trasaction) {
-        add(threadLocalConnectionTransactionMap, getCurrentConnection(), trasaction);
-    }
-
-    protected T removeTransaction() {
-        return remove(threadLocalConnectionTransactionMap, getCurrentConnection());
-    }
-
-    protected void mapPipeline(P trasaction) {
-        add(threadLocalConnectionPipelineMap, getCurrentConnection(), trasaction);
-    }
-
-    protected P removePipeline() {
-        return remove(threadLocalConnectionPipelineMap, getCurrentConnection());
-    }
+    protected abstract <K, V> Session<K, V> createSession(Class<K> keyClass, Class<V> valueClass);
 
     //*********************************************************************************
     //*********************************************************************************
-    // Generic helper methods
+    // PRIVATE HELPER METHODS
     //*********************************************************************************
     //*********************************************************************************
 
-    private <K, V> void add(ThreadLocal<Map<K, V>> threadLocalMap, K key, V value) {
-        if(threadLocalMap.get() == null) {
-            threadLocalMap.set(new HashMap<K, V>());
+    private int calculateSessionKey(Object... keys) {
+        int total = 0;
+        for (int i = 0; i < keys.length; i++) {
+            if (keys[i] != null) {
+                total += 31 * keys[i].hashCode();
+            }
         }
 
-        threadLocalMap.get().put(key, value);
-    }
-
-    private <K, V> V remove(ThreadLocal<Map<K, V>> threadLocalMap, K key) {
-        final V value = threadLocalMap.get().remove(key);
-
-        if(threadLocalMap.get().isEmpty()) {
-            threadLocalMap.remove();
-        }
-
-        return value;
-    }
-
-    private <K, V> V get(ThreadLocal<Map<K, V>> threadLocalMap, K key) {
-        return threadLocalMap.get() != null ? threadLocalMap.get().get(key) : null;
-    }
-
-    private <V> void add(ThreadLocal<Stack<V>> threadLocalStack, V value) {
-        if(threadLocalStack.get() == null) {
-            threadLocalStack.set(new Stack<V>());
-        }
-
-        threadLocalStack.get().push(value);
-    }
-
-    private <V> V remove(ThreadLocal<Stack<V>> threadLocalStack) {
-        final V value = threadLocalStack.get().pop();
-
-        if(threadLocalStack.get().isEmpty()) {
-            threadLocalStack.remove();
-        }
-
-        return value;
-    }
-
-    private <V> V get(ThreadLocal<Stack<V>> threadLocalStack) {
-        return threadLocalStack.get() != null ? threadLocalStack.get().peek() : null;
+        return total;
     }
 }

@@ -320,4 +320,9 @@ public class KeyCommandIntegerService implements KeyCommand<Integer, Integer> {
     public Response<Boolean> unlock(@Nonnull Integer key) {
         return keyCommandIntegerBinding.unlock(key);
     }
+
+    @Override
+    public Response<Status> watch(Integer... keys) {
+        return keyCommandIntegerBinding.watch(keys);
+    }
 }

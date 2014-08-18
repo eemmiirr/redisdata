@@ -317,4 +317,9 @@ public class KeyCommandComplexEntityTransactionalService implements KeyCommand<I
     public Response<Boolean> unlock(@Nonnull Integer key) {
         return keyCommandComplexEntityBinding.unlock(key);
     }
+
+    @Override
+    public Response<Status> watch(Integer... keys) {
+        return keyCommandComplexEntityBinding.watch(keys);
+    }
 }

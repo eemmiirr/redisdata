@@ -168,73 +168,36 @@
 package com.github.eemmiirr.redisdata.jedis;
 
 import com.github.eemmiirr.redisdata.datamapper.DataMapper;
-import com.github.eemmiirr.redisdata.exception.DataMapperNotSupportedException;
+import com.github.eemmiirr.redisdata.datamapper.DataMapperResolver;
+import com.github.eemmiirr.redisdata.exception.datamapper.DataMapperNotSupportedException;
 import com.github.eemmiirr.redisdata.exception.session.SessionNotOpenExcpetion;
+import com.github.eemmiirr.redisdata.session.AbstractCachingSessionFactory;
+import com.github.eemmiirr.redisdata.session.ArgumentCheckSessionDecorator;
 import com.github.eemmiirr.redisdata.session.Session;
 import com.github.eemmiirr.redisdata.session.TypeEnforcingSessionDecorator;
-import com.github.eemmiirr.redisdata.session.ArgumentCheckSessionDecorator;
-import com.github.eemmiirr.redisdata.session.SessionFactory;
 import com.github.eemmiirr.redisdata.transaction.TransactionManager;
-import com.google.common.base.Preconditions;
 import redis.clients.jedis.*;
-
-import java.util.Collections;
-import java.util.Map;
-
-import static com.google.common.base.Preconditions.checkArgument;
 
 /**
  * @author Emir Dizdarevic
  * @since 0.7
  */
-public class JedisSessionFactory implements SessionFactory {
+class JedisSessionFactory extends AbstractCachingSessionFactory {
 
     private final TransactionManager<Jedis, Transaction, Pipeline> transactionManager;
-    private final DataMapper defaultKeyDataMapper;
-    private final DataMapper defaultValueDataMapper;
-    private final Map<Class, DataMapper> keyDataMappers;
-    private final Map<Class, DataMapper> valueDataMappers;
+    private final DataMapperResolver dataMapperResolver;
 
-    public JedisSessionFactory(TransactionManager<Jedis, Transaction, Pipeline> transactionManager, DataMapper defaultKeyDataMapper, DataMapper defaultValueDataMapper) {
-       this(transactionManager, defaultKeyDataMapper, defaultValueDataMapper, Collections.<Class, DataMapper>emptyMap(), Collections.<Class, DataMapper>emptyMap());
-    }
-
-    public JedisSessionFactory(TransactionManager<Jedis, Transaction, Pipeline> transactionManager, DataMapper defaultKeyDataMapper, DataMapper defaultValueDataMapper, Map<Class, DataMapper> keyDataMappers, Map<Class, DataMapper> valueDataMappers) {
+    public JedisSessionFactory(TransactionManager<Jedis, Transaction, Pipeline> transactionManager, DataMapperResolver dataMapperResolver) {
+        super(transactionManager);
         this.transactionManager = transactionManager;
-        this.defaultKeyDataMapper = defaultKeyDataMapper;
-        this.defaultValueDataMapper = defaultValueDataMapper;
-        this.keyDataMappers = keyDataMappers;
-        this.valueDataMappers = valueDataMappers;
-        checkDataMappers();
-    }
-
-    private void checkDataMappers() {
-
-        // Check key data mappers
-        for(Map.Entry<Class, DataMapper> entry : keyDataMappers.entrySet()) {
-            final Class clazz = entry.getKey();
-            final DataMapper dataMapper = entry.getValue();
-            if(!dataMapper.isSupported(clazz)) {
-                throw new DataMapperNotSupportedException(clazz, dataMapper);
-            };
-        }
-
-        // Check value data mappers
-        for(Map.Entry<Class, DataMapper> entry : valueDataMappers.entrySet()) {
-            final Class clazz = entry.getKey();
-            final DataMapper dataMapper = entry.getValue();
-            if(!dataMapper.isSupported(clazz)) {
-                throw new DataMapperNotSupportedException(clazz, dataMapper);
-            };
-        }
-
+        this.dataMapperResolver = dataMapperResolver;
     }
 
     @Override
-    public <K, V> Session<K, V> getCurrentSession(Class<K> keyClass, Class<V> valueClass) throws SessionNotOpenExcpetion {
-        
+    public <K, V> Session<K, V> createSession(Class<K> keyClass, Class<V> valueClass) throws SessionNotOpenExcpetion {
+
         final Jedis jedis = transactionManager.getCurrentConnection();
-        if(jedis == null) {
+        if (jedis == null) {
             throw new SessionNotOpenExcpetion("Please acquire a Session in a managed method(Class or method annotated with @RedisData).");
         }
 
@@ -243,31 +206,33 @@ public class JedisSessionFactory implements SessionFactory {
         final Pipeline currentPipeline = transactionManager.getCurrentPipeline();
         final Object pipelineOrTransaction = currentTransaction != null ? currentTransaction : currentPipeline;
 
-        final DataMapper<K> keyDataMapper = getKeyDataMapper(keyClass);
-        final DataMapper<V> valueDataMapper = getValueDataMapper(valueClass);
+        final DataMapper<K> keyDataMapper = dataMapperResolver.getKeyDataMapper(keyClass);
+        final DataMapper<V> valueDataMapper = dataMapperResolver.getValueDataMapper(valueClass);
 
-        if(!keyDataMapper.isSupported(keyClass)) throw new DataMapperNotSupportedException(keyClass, keyDataMapper);
-        if(!valueDataMapper.isSupported(valueClass)) throw new DataMapperNotSupportedException(valueClass, valueDataMapper);
+        if (!keyDataMapper.isSupported(keyClass)) throw new DataMapperNotSupportedException(keyClass, keyDataMapper);
+        if (!valueDataMapper.isSupported(valueClass)) throw new DataMapperNotSupportedException(valueClass, valueDataMapper);
 
         // Create a new session
-        if(pipelineOrTransaction != null) {
-            return new ArgumentCheckSessionDecorator<K, V>(
-                new TypeEnforcingSessionDecorator<K, V>(
-                    new JedisPipelineSession<K, V>(
-                        (BinaryRedisPipeline) pipelineOrTransaction,
-                        (MultiKeyBinaryRedisPipeline) pipelineOrTransaction,
-                        pipelineOrTransaction,
-                        keyDataMapper,
-                        keyClass,
-                        valueDataMapper,
-                        valueClass
-                    ),
-                    keyClass,
-                    valueClass
-                )
+        final Session<K, V> session;
+        if (pipelineOrTransaction != null) {
+            session = new ArgumentCheckSessionDecorator<K, V>(
+                    new TypeEnforcingSessionDecorator<K, V>(
+                            new JedisPipelineSession<K, V>(
+                                    jedis,
+                                    (BinaryRedisPipeline) pipelineOrTransaction,
+                                    (MultiKeyBinaryRedisPipeline) pipelineOrTransaction,
+                                    pipelineOrTransaction,
+                                    keyDataMapper,
+                                    keyClass,
+                                    valueDataMapper,
+                                    valueClass
+                            ),
+                            keyClass,
+                            valueClass
+                    )
             );
         } else {
-            return new ArgumentCheckSessionDecorator<K, V>(
+            session = new ArgumentCheckSessionDecorator<K, V>(
                     new TypeEnforcingSessionDecorator<K, V>(
                             new JedisSession<K, V>(
                                     jedis,
@@ -275,47 +240,12 @@ public class JedisSessionFactory implements SessionFactory {
                                     keyClass,
                                     valueDataMapper,
                                     valueClass),
-                                    keyClass,
-                                    valueClass
-                    ));
+                            keyClass,
+                            valueClass
+                    )
+            );
         }
-    }
 
-    @Override
-    public DataMapper getDefaultKeyDataMapper() {
-        return defaultKeyDataMapper;
-    }
-
-    @Override
-    public Map<Class, DataMapper> getKeyDataMappers() {
-        return keyDataMappers;
-    }
-
-    @Override
-    public DataMapper getDefaultValueDataMapper() {
-        return defaultValueDataMapper;
-    }
-
-    @Override
-    public Map<Class, DataMapper> getValueDataMappers() {
-        return valueDataMappers;
-    }
-
-    //*********************************************************************************
-    //*********************************************************************************
-    // PRIVATE HELPER METHODS
-    //*********************************************************************************
-    //*********************************************************************************
-
-    private DataMapper getKeyDataMapper(Class clazz) {
-        return getDataMapper(clazz, defaultKeyDataMapper, keyDataMappers);
-    }
-
-    private DataMapper getValueDataMapper(Class clazz) {
-        return getDataMapper(clazz, defaultValueDataMapper, valueDataMappers);
-    }
-
-    private DataMapper getDataMapper(Class clazz, DataMapper defaultDataMapper, Map<Class, DataMapper> dataMappers) {
-        return dataMappers.containsKey(clazz) ? dataMappers.get(clazz) : defaultDataMapper;
+        return session;
     }
 }

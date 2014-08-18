@@ -165,26 +165,59 @@
  * permanent authorization for you to choose that version for the
  * Library.
  */
-package com.github.eemmiirr.redisdata.exception;
+package com.github.eemmiirr.redisdata.datamapper;
+
+import org.springframework.beans.factory.FactoryBean;
+
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * @author Emir Dizdarevic
- * @since 0.7
+ * @since 0.8
  */
-public class DataNotReadyException extends RedisDataException {
+public class SpringDataMapperResolverFactory implements FactoryBean<DataMapperResolver> {
 
-    public DataNotReadyException() {
+    private final DataMapper defaultKeyDataMapper;
+    private final DataMapper defaultValueDataMapper;
+    private final Map<Class, DataMapper> keyDataMappers;
+    private final Map<Class, DataMapper> valueDataMappers;
+
+    public SpringDataMapperResolverFactory(DataMapper defaultKeyDataMapper, DataMapper defaultValueDataMapper) {
+        this.defaultKeyDataMapper = defaultKeyDataMapper;
+        this.defaultValueDataMapper = defaultValueDataMapper;
+        this.keyDataMappers = Collections.emptyMap();
+        this.valueDataMappers = Collections.emptyMap();
     }
 
-    public DataNotReadyException(String message) {
-        super(message);
+    public SpringDataMapperResolverFactory(DataMapper defaultKeyDataMapper, DataMapper defaultValueDataMapper, Map<Class, DataMapper> keyDataMappers, Map<Class, DataMapper> valueDataMappers) {
+        this.defaultKeyDataMapper = defaultKeyDataMapper;
+        this.defaultValueDataMapper = defaultValueDataMapper;
+        this.keyDataMappers = keyDataMappers;
+        this.valueDataMappers = valueDataMappers;
     }
 
-    public DataNotReadyException(String message, Throwable cause) {
-        super(message, cause);
+    @Override
+    public DataMapperResolver getObject() throws Exception {
+        final DefaultDataMapperResolver.Builder builder =  DefaultDataMapperResolver.builder(defaultKeyDataMapper, defaultValueDataMapper);
+        for(Map.Entry<Class, DataMapper> entry : keyDataMappers.entrySet())  {
+            builder.withKeyDataMapper(entry.getKey(), entry.getValue());
+        }
+
+        for(Map.Entry<Class, DataMapper> entry : valueDataMappers.entrySet())  {
+            builder.withValueDataMapper(entry.getKey(), entry.getValue());
+        }
+
+        return builder.build();
     }
 
-    public DataNotReadyException(Throwable cause) {
-        super(cause);
+    @Override
+    public Class<?> getObjectType() {
+        return DataMapperResolver.class;
+    }
+
+    @Override
+    public boolean isSingleton() {
+        return true;
     }
 }

@@ -165,28 +165,227 @@
  * permanent authorization for you to choose that version for the
  * Library.
  */
-package com.github.eemmiirr.redisdata.exception;
+package com.github.eemmiirr.redisdata.performance;
 
-import com.github.eemmiirr.redisdata.datamapper.DataMapper;
+import com.carrotsearch.junitbenchmarks.BenchmarkOptions;
+import com.carrotsearch.junitbenchmarks.BenchmarkRule;
+import com.carrotsearch.junitbenchmarks.annotation.BenchmarkHistoryChart;
+import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
+import com.carrotsearch.junitbenchmarks.annotation.LabelType;
+import org.junit.*;
+import org.junit.rules.TestRule;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Pipeline;
+import redis.clients.jedis.Response;
+import redis.clients.jedis.Transaction;
+import redis.embedded.RedisServer;
+
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Random;
 
 /**
  * @author Emir Dizdarevic
  * @since 0.7
  */
-public class DataMapperNotSupportedException extends DataMapperException {
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration("classpath:integrationTestContext.xml")
+@BenchmarkMethodChart(filePrefix = "list-command-benchmark-lists")
+@BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 0, concurrency = BenchmarkOptions.CONCURRENCY_AVAILABLE_CORES)
+public class ListCommandPerformanceTest {
 
-    private final Class clazz;
-    private final DataMapper dataMapper;
+    private static final Random random = new Random();
+    private static final int count = 100000;
 
-    public DataMapperNotSupportedException(Class clazz, DataMapper dataMapper) {
-        super("Type " + clazz.getCanonicalName() + " is not supported by data mapper " + dataMapper.getClass().getCanonicalName());
-        this.clazz = clazz;
-        this.dataMapper = dataMapper;
+    private static RedisServer redisServer;
+    protected ThreadLocal<Jedis> jedisThreadLocal = new ThreadLocal<Jedis>();
+
+    @Rule
+    public TestRule benchmarkRun = new BenchmarkRule();
+
+    @Autowired
+    private CommandPerformanceService commandPerformanceService;
+
+    @BeforeClass
+    public static final void initClass() throws Exception {
+        redisServer = new RedisServer("2.8.5", 6379);
+        redisServer.start();
+
+        while (!redisServer.isActive()) ;
     }
 
-    public DataMapperNotSupportedException(Class clazz, DataMapper dataMapper, Exception e) {
-        super("Type " + clazz.getCanonicalName() + " is not supported by data mapper " + dataMapper.getClass().getCanonicalName(), e);
-        this.clazz = clazz;
-        this.dataMapper = dataMapper;
+    @AfterClass
+    public static final void destroyClass() throws Exception {
+        redisServer.stop();
+    }
+
+    @Before
+    public final void init() throws Exception {
+        final Jedis jedis = new Jedis("localhost", 6379);
+        jedis.flushAll();
+        jedisThreadLocal.set(jedis);
+    }
+
+    @After
+    public final void destroy() throws Exception {
+        jedisThreadLocal.get().quit();
+        jedisThreadLocal.remove();
+    }
+
+    private void prepareDataForLPop(Integer key) {
+        final Pipeline pipeline = jedisThreadLocal.get().pipelined();
+        pipeline.multi();
+        for (int i = 0; i < count; i++) {
+            pipeline.rpush(String.valueOf(key), String.valueOf(i));
+        }
+
+        pipeline.exec();
+        pipeline.syncAndReturnAll();
+    }
+
+    @Test
+    public void testLPushPerformanceJedis() {
+        final int key = random.nextInt();
+        for (int i = 0; i < count; i++) {
+            jedisThreadLocal.get().lpush(String.valueOf(key), String.valueOf(i));
+        }
+    }
+
+    @Test
+    public void testLPushPipelinedPerformanceJedis() {
+        final int key = random.nextInt();
+        final Pipeline pipeline = jedisThreadLocal.get().pipelined();
+        for (int i = 0; i < count; i++) {
+            pipeline.lpush(String.valueOf(key), String.valueOf(i));
+        }
+        pipeline.syncAndReturnAll();
+    }
+
+    @Test
+    public void testLPushTransactionPerformanceJedis() {
+        final int key = random.nextInt();
+        final Transaction tx = jedisThreadLocal.get().multi();
+        for (int i = 0; i < count; i++) {
+            tx.lpush(String.valueOf(key), String.valueOf(i));
+        }
+        tx.exec();
+    }
+
+    @Test
+    public void testLPushPipelinedTransactionPerformanceJedis() {
+        final int key = random.nextInt();
+        final Pipeline pipeline = jedisThreadLocal.get().pipelined();
+        pipeline.multi();
+        for (int i = 0; i < count; i++) {
+            pipeline.lpush(String.valueOf(key), String.valueOf(i));
+        }
+
+        pipeline.exec();
+        pipeline.syncAndReturnAll();
+    }
+
+    @Test
+    public void testLPopPerformanceJedis() {
+        final int key = random.nextInt();
+        prepareDataForLPop(key);
+        final List<String> responses = new LinkedList<String>();
+        for (int i = 0; i < count; i++) {
+            responses.add(jedisThreadLocal.get().lpop(String.valueOf(key)));
+        }
+    }
+
+    @Test
+    public void testLPopPipelinedPerformanceJedis() {
+        final int key = random.nextInt();
+        prepareDataForLPop(key);
+        final List<Response> responses = new LinkedList<Response>();
+        final Pipeline pipeline = jedisThreadLocal.get().pipelined();
+        for (int i = 0; i < count; i++) {
+            responses.add(pipeline.lpop(String.valueOf(key)));
+        }
+        pipeline.syncAndReturnAll();
+    }
+
+    @Test
+    public void testLPopTransactionPerformanceJedis() {
+        final int key = random.nextInt();
+        prepareDataForLPop(key);
+        final List<Response> responses = new LinkedList<Response>();
+        final Transaction tx = jedisThreadLocal.get().multi();
+        for (int i = 0; i < count; i++) {
+            responses.add(tx.lpop(String.valueOf(key)));
+        }
+        tx.exec();
+    }
+
+    @Test
+    public void testLPopPipelinedTransactionPerformanceJedis() {
+        final int key = random.nextInt();
+        prepareDataForLPop(key);
+        final List<Response> responses = new LinkedList<Response>();
+        final Pipeline pipeline = jedisThreadLocal.get().pipelined();
+        pipeline.multi();
+        for (int i = 0; i < count; i++) {
+            responses.add(pipeline.lpop(String.valueOf(key)));
+        }
+
+        pipeline.exec();
+        pipeline.syncAndReturnAll();
+    }
+
+    @Test
+    public void testLPushPerformanceRedisData() {
+        final int key = random.nextInt();
+        commandPerformanceService.lPush(key, count);
+    }
+
+    @Test
+    public void testLPushPipelinedPerformanceRedisData() {
+        final int key = random.nextInt();
+        commandPerformanceService.lPushPipelined(key, count);
+    }
+
+    @Test
+    public void testLPushTransactionPerformanceRedisData() {
+        final int key = random.nextInt();
+        commandPerformanceService.lPushTransaction(key, count);
+    }
+
+    @Test
+    public void testLPushPipelinedTransactionPerformanceRedisData() {
+        final int key = random.nextInt();
+        commandPerformanceService.lPushPipelinedTransaction(key, count);
+    }
+
+    @Test
+    public void testLPopPerformanceRedisData() {
+        final int key = random.nextInt();
+        prepareDataForLPop(key);
+        commandPerformanceService.lpop(key, count);
+    }
+
+    @Test
+    public void testLPopPipelinedPerformanceRedisData() {
+        final int key = random.nextInt();
+        prepareDataForLPop(key);
+        commandPerformanceService.lpopPipelined(key, count);
+    }
+
+    @Test
+    public void testLPopTransactionPerformanceRedisData() {
+        final int key = random.nextInt();
+        prepareDataForLPop(key);
+        commandPerformanceService.lpopTransaction(key, count);
+    }
+
+    @Test
+    public void testLPopPipelinedTransactionPerformanceRedisData() {
+        final int key = random.nextInt();
+        prepareDataForLPop(key);
+        commandPerformanceService.lpopPipelinedTransaction(key, count);
     }
 }

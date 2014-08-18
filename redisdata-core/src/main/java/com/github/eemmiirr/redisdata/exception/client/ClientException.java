@@ -165,8 +165,9 @@
  * permanent authorization for you to choose that version for the
  * Library.
  */
-package com.github.eemmiirr.redisdata.exception;
+package com.github.eemmiirr.redisdata.exception.client;
 
+import com.github.eemmiirr.redisdata.exception.RedisDataException;
 import com.github.eemmiirr.redisdata.response.Status;
 
 /**

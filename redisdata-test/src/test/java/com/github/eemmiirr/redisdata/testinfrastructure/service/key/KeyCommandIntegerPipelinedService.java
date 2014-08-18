@@ -320,4 +320,9 @@ public class KeyCommandIntegerPipelinedService implements KeyCommand<Integer, In
     public Response<Boolean> unlock(@Nonnull Integer key) {
         return keyCommandIntegerBinding.unlock(key);
     }
+
+    @Override
+    public Response<Status> watch(Integer... keys) {
+        return keyCommandIntegerBinding.watch(keys);
+    }
 }

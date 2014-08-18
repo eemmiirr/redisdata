@@ -165,17 +165,28 @@
  * permanent authorization for you to choose that version for the
  * Library.
  */
-package com.github.eemmiirr.redisdata;
+package com.github.eemmiirr.redisdata.exception.datamapper;
 
-import com.github.eemmiirr.redisdata.session.SessionFactory;
-import com.github.eemmiirr.redisdata.transaction.TransactionManager;
+import com.github.eemmiirr.redisdata.datamapper.DataMapper;
 
 /**
  * @author Emir Dizdarevic
  * @since 0.7
  */
-public interface RedisDataAbstractFactory {
+public class DataMapperNotSupportedException extends DataMapperException {
 
-    SessionFactory getSessionFactory();
-    TransactionManager getTransactionManager();
+    private final Class clazz;
+    private final DataMapper dataMapper;
+
+    public DataMapperNotSupportedException(Class clazz, DataMapper dataMapper) {
+        super("Type " + clazz.getCanonicalName() + " is not supported by data mapper " + dataMapper.getClass().getCanonicalName());
+        this.clazz = clazz;
+        this.dataMapper = dataMapper;
+    }
+
+    public DataMapperNotSupportedException(Class clazz, DataMapper dataMapper, Exception e) {
+        super("Type " + clazz.getCanonicalName() + " is not supported by data mapper " + dataMapper.getClass().getCanonicalName(), e);
+        this.clazz = clazz;
+        this.dataMapper = dataMapper;
+    }
 }

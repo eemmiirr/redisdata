@@ -168,7 +168,7 @@
 package com.github.eemmiirr.redisdata.datamapper;
 
 import com.google.common.base.Charsets;
-import com.github.eemmiirr.redisdata.exception.DataMapperException;
+import com.github.eemmiirr.redisdata.exception.datamapper.DataMapperException;
 
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;

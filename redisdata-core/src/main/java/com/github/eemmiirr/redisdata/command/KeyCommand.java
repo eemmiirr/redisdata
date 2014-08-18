@@ -243,4 +243,6 @@ public interface KeyCommand<K, V> {
     Response<Boolean> lock(@Nonnull K key);
 
     Response<Boolean> unlock(@Nonnull K key);
+
+    Response<Status> watch(K... keys);
 }

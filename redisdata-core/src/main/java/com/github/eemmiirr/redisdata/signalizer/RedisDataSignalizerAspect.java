@@ -167,14 +167,14 @@
  */
 package com.github.eemmiirr.redisdata.signalizer;
 
+import com.github.eemmiirr.redisdata.annotation.RedisData;
 import com.github.eemmiirr.redisdata.exception.RedisDataSignalizerException;
+import com.github.eemmiirr.redisdata.transaction.TransactionManager;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
-import com.github.eemmiirr.redisdata.annotation.RedisData;
-import com.github.eemmiirr.redisdata.transaction.TransactionManager;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;

@@ -441,4 +441,9 @@ public class SortedSetCommandComplexEntityService implements SortedSetCommand<In
     public Response<Boolean> unlock(@Nonnull Integer key) {
         return sortedSetCommandComplexEntityBinding.unlock(key);
     }
+
+    @Override
+    public Response<Status> watch(Integer... keys) {
+        return sortedSetCommandComplexEntityBinding.watch(keys);
+    }
 }

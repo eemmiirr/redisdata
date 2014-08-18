@@ -383,4 +383,9 @@ public class HashCommandComplexEntityService implements HashCommand<Integer, Com
     public Response<Boolean> unlock(@Nonnull Integer key) {
         return hashCommandComplexEntityBinding.unlock(key);
     }
+
+    @Override
+    public Response<Status> watch(Integer... keys) {
+        return hashCommandComplexEntityBinding.watch(keys);
+    }
 }

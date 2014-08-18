@@ -167,12 +167,11 @@
  */
 package com.github.eemmiirr.redisdata.datamapper;
 
+import com.github.eemmiirr.redisdata.exception.datamapper.DataMapperException;
+import de.ruedigermoeller.serialization.FSTConfiguration;
 import de.ruedigermoeller.serialization.FSTObjectInput;
 import de.ruedigermoeller.serialization.FSTObjectOutput;
-import com.github.eemmiirr.redisdata.exception.DataMapperException;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
 
 /**
@@ -181,15 +180,25 @@ import java.io.Serializable;
  */
 public class FSTDataMapper<T> implements DataMapper<T> {
 
+    private static final FSTConfiguration defaultFstConfiguration = FSTConfiguration.createDefaultConfiguration();
+    private final FSTConfiguration fstConfiguration;
+
+    public FSTDataMapper() {
+        this.fstConfiguration = defaultFstConfiguration;
+    }
+
+    public FSTDataMapper(FSTConfiguration fstConfiguration) {
+        this.fstConfiguration = fstConfiguration;
+    }
+
     @Override
     public byte[] serialize(T object) throws DataMapperException {
 
         try {
-            final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            final FSTObjectOutput fstObjectOutput = new FSTObjectOutput(byteArrayOutputStream);
+            final FSTObjectOutput fstObjectOutput = fstConfiguration.getObjectOutput();
             fstObjectOutput.writeObject(object);
-            fstObjectOutput.close();
-            return byteArrayOutputStream.toByteArray();
+            fstObjectOutput.flush();
+            return fstObjectOutput.getCopyOfWrittenBuffer();
         } catch (Exception e) {
             throw new DataMapperException("Error serializing object " + object, e);
         }
@@ -198,9 +207,8 @@ public class FSTDataMapper<T> implements DataMapper<T> {
     @Override
     public T deserialize(byte[] data, Class<T> clazz) throws DataMapperException {
         try {
-            final FSTObjectInput fstObjectInput = new FSTObjectInput(new ByteArrayInputStream(data));
+            final FSTObjectInput fstObjectInput = fstConfiguration.getObjectInput(data);
             final T deserializedData = (T) fstObjectInput.readObject(clazz);
-            fstObjectInput.close();
             return deserializedData;
         } catch (Exception e) {
             throw new DataMapperException("Error deserializing byte strema into class " + clazz.getCanonicalName(), e);

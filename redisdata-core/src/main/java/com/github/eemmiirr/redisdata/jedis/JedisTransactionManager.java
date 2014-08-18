@@ -168,26 +168,115 @@
 package com.github.eemmiirr.redisdata.jedis;
 
 import com.github.eemmiirr.redisdata.ConnectionPool;
-import com.github.eemmiirr.redisdata.transaction.AbstractTransactionManger;
+import com.github.eemmiirr.redisdata.exception.client.ClientException;
+import com.github.eemmiirr.redisdata.response.Status;
+import com.github.eemmiirr.redisdata.transaction.TransactionManager;
+import com.google.common.collect.MapMaker;
+import net.sf.cglib.proxy.Enhancer;
+import net.sf.cglib.proxy.MethodInterceptor;
+import net.sf.cglib.proxy.MethodProxy;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Transaction;
+import redis.clients.jedis.exceptions.JedisException;
+
+import java.lang.reflect.Method;
+import java.util.*;
 
 /**
  * @author Emir Dizdarevic
  * @since 0.7
  */
-public class JedisTransactionManager extends AbstractTransactionManger<Jedis, Transaction, Pipeline> {
+public class JedisTransactionManager implements TransactionManager<Jedis, Transaction, Pipeline> {
+
+    private static final Set<Method> untouchables = new HashSet<Method>();
+    private static final Map<Jedis, Transaction> transactionProxyCache = new MapMaker().weakKeys().makeMap();
+    private static final Map<Jedis, Pipeline> pipelineProxyCache = new MapMaker().weakKeys().makeMap();
+
+    static {
+        for (Method method : Object.class.getMethods()) {
+            untouchables.add(method);
+        }
+    }
 
     private final ConnectionPool<Jedis> connectionPool;
+    private Enhancer transactionEnhancer;
+    private Enhancer pipelineEnhancer;
+
+    private final ThreadLocal<Deque<Jedis>> threadLocalConnectionStack = new ThreadLocal<Deque<Jedis>>() {
+        @Override
+        protected Deque<Jedis> initialValue() {
+            return new LinkedList<Jedis>();
+        }
+    };
+    private final ThreadLocal<Map<Jedis, Transaction>> threadLocalConnectionTransactionMap = new ThreadLocal<Map<Jedis, Transaction>>() {
+        @Override
+        protected Map<Jedis, Transaction> initialValue() {
+            return new HashMap<Jedis, Transaction>();
+        }
+    };
+    private final ThreadLocal<Map<Jedis, Pipeline>> threadLocalConnectionPipelineMap = new ThreadLocal<Map<Jedis, Pipeline>>() {
+        @Override
+        protected Map<Jedis, Pipeline>initialValue() {
+            return new HashMap<Jedis, Pipeline>();
+        }
+    };
+    private final ThreadLocal<Set<Jedis>> threadLocalConnectionTransactionPromisedSet = new ThreadLocal<Set<Jedis>>() {
+        @Override
+        protected Set<Jedis> initialValue() {
+            return new HashSet<Jedis>();
+        }
+    };
+    private final ThreadLocal<Set<Jedis>> threadLocalConnectionPipelinePromisedSet = new ThreadLocal<Set<Jedis>>() {
+        @Override
+        protected Set<Jedis> initialValue() {
+            return new HashSet<Jedis>();
+        }
+    };
+    private final ThreadLocal<Set<Jedis>> threadLocalConnectionTransactionStartedSet = new ThreadLocal<Set<Jedis>>() {
+        @Override
+        protected Set<Jedis> initialValue() {
+            return new HashSet<Jedis>();
+        }
+    };
+    private final ThreadLocal<Set<Jedis>> threadLocalConnectionPipelineStartedSet = new ThreadLocal<Set<Jedis>>() {
+        @Override
+        protected Set<Jedis> initialValue() {
+            return new HashSet<Jedis>();
+        }
+    };
 
     public JedisTransactionManager(ConnectionPool<Jedis> connectionPool) {
         this.connectionPool = connectionPool;
+        init();
+    }
+
+    private void init() {
+        transactionEnhancer = new Enhancer();
+        transactionEnhancer.setSuperclass(Transaction.class);
+        transactionEnhancer.setCallback(new TransactionMethodInterceptor());
+
+        pipelineEnhancer = new Enhancer();
+        pipelineEnhancer.setSuperclass(Pipeline.class);
+        pipelineEnhancer.setCallback(new PipelineMethodInterceptor());
+    }
+
+    @Override
+    public final Jedis getCurrentConnection() {
+        return threadLocalConnectionStack.get().peek();
+    }
+
+    @Override
+    public final boolean connectionOpen() {
+        return getCurrentConnection() != null;
     }
 
     @Override
     public void openConnection() {
         final Jedis jedis = connectionPool.getConnection();
+
+        // This has to be done because connections are reused
+        jedis.unwatch();
 
         // Bind jedis connection and session to current thread
         addConnection(jedis);
@@ -201,68 +290,218 @@ public class JedisTransactionManager extends AbstractTransactionManger<Jedis, Tr
     @Override
     public void discardConnection(Throwable throwable) {
         connectionPool.returnBrokenConnection(removeConnection());
+
+        if(throwable instanceof JedisException) {
+            throw new ClientException(Status.parse(throwable.getMessage()), "Something went wrong with the underlying redis client.", throwable);
+        }
     }
 
     @Override
-    public boolean connectionOpen() {
-        return getCurrentConnection() != null;
+    public final Transaction getCurrentTransaction() {
+        if(transactionOpen()) {
+            return getCurrentUnproxiedTransaction();
+        } else if (transactionPromissed() && !pipelinePromissed()) {
+            return getCurrentProxiedTransaction();
+        }
+
+        return null;
     }
 
     @Override
-    public void startTransaction() {
-        if (!pipelineOpen()) {
+    public final boolean transactionOpen() {
+        return threadLocalConnectionTransactionStartedSet.get().contains(getCurrentConnection());
+    }
+
+    @Override
+    public final void startTransaction() {
+        threadLocalConnectionTransactionPromisedSet.get().add(getCurrentConnection());
+    }
+
+    @Override
+    public final void executeTransaction() {
+        executeTransactionLazy();
+        threadLocalConnectionTransactionStartedSet.get().remove(getCurrentConnection());
+        threadLocalConnectionTransactionPromisedSet.get().remove(getCurrentConnection());
+    }
+
+    @Override
+    public final void discardTransaction(Throwable throwable) {
+        discardTransactionLazy(throwable);
+        threadLocalConnectionTransactionStartedSet.get().remove(getCurrentConnection());
+        threadLocalConnectionTransactionPromisedSet.get().remove(getCurrentConnection());
+    }
+
+    @Override
+    public final Pipeline getCurrentPipeline() {
+        if(pipelineOpen()) {
+            return getCurrentUnproxiedPipeline();
+        } else if (pipelinePromissed()) {
+            return getCurrentProxiedPipeline();
+        }
+
+        return null;
+    }
+
+    @Override
+    public final boolean pipelineOpen() {
+        return threadLocalConnectionPipelineStartedSet.get().contains(getCurrentConnection());
+    }
+
+    @Override
+    public final void startPipeline() {
+        threadLocalConnectionPipelinePromisedSet.get().add(getCurrentConnection());
+    }
+
+    @Override
+    public final void executePipeline() {
+        executePipelineLazy();
+        threadLocalConnectionPipelineStartedSet.get().remove(getCurrentConnection());
+        threadLocalConnectionPipelinePromisedSet.get().remove(getCurrentConnection());
+    }
+
+    @Override
+    public final void discardPipeline(Throwable throwable) {
+        discardPipelineLazy(throwable);
+        threadLocalConnectionPipelineStartedSet.get().remove(getCurrentConnection());
+        threadLocalConnectionPipelinePromisedSet.get().remove(getCurrentConnection());
+    }
+
+    private void startTransactionLazy() {
+        if (getCurrentUnproxiedPipeline() == null) {
             final Transaction transaction = getCurrentConnection().multi();
             mapTransaction(transaction);
         } else {
-            getCurrentPipeline().multi();
+            getCurrentUnproxiedPipeline().multi();
         }
     }
 
-    @Override
-    public void executeTransaction() {
-        if (!pipelineOpen()) {
+    private void executeTransactionLazy() {
+        if (getCurrentUnproxiedPipeline() == null && getCurrentUnproxiedTransaction() != null) {
             removeTransaction().exec();
-        } else {
-            getCurrentPipeline().exec();
+        } else if(getCurrentUnproxiedPipeline() != null) {
+            getCurrentUnproxiedPipeline().exec();
         }
     }
 
-    @Override
-    public void discardTransaction(Throwable throwable) {
-        if (!pipelineOpen() && transactionOpen()) {
+    private void discardTransactionLazy(Throwable throwable) {
+        if (getCurrentUnproxiedPipeline() == null && getCurrentUnproxiedTransaction() != null) {
             removeTransaction().discard();
-        } else if (pipelineOpen()) {
-            getCurrentPipeline().discard();
+        } else if (getCurrentUnproxiedPipeline() != null) {
+            getCurrentUnproxiedPipeline().discard();
         }
     }
 
-    @Override
-    public boolean transactionOpen() {
-        return getCurrentTransaction() != null;
-    }
-
-    @Override
-    public void startPipeline() {
+    private void startPipelineLazy() {
         final Pipeline pipeline = getCurrentConnection().pipelined();
         mapPipeline(pipeline);
     }
 
-    @Override
-    public void executePipeline() {
+    private void executePipelineLazy() {
 
         // This seems like a bug in jedis. It should also work with sync() but it doesn't
-        removePipeline().syncAndReturnAll();
+        if(getCurrentUnproxiedPipeline() != null) {
+            removePipeline().syncAndReturnAll();
+        }
     }
 
-    @Override
-    public void discardPipeline(Throwable throwable) {
+    private void discardPipelineLazy(Throwable throwable) {
         if (pipelineOpen()) {
             removePipeline();
         }
     }
 
-    @Override
-    public boolean pipelineOpen() {
-        return getCurrentPipeline() != null;
+    private Transaction getCurrentProxiedTransaction() {
+
+        Transaction transaction = transactionProxyCache.get(getCurrentConnection());
+        if(transaction == null) {
+            transaction = (Transaction) transactionEnhancer.create();
+            transactionProxyCache.put(getCurrentConnection(), transaction);
+        }
+
+        return transaction;
+    }
+
+    private Pipeline getCurrentProxiedPipeline() {
+        Pipeline pipeline = pipelineProxyCache.get(getCurrentConnection());
+        if(pipeline == null) {
+            pipeline = (Pipeline) pipelineEnhancer.create();
+            pipelineProxyCache.put(getCurrentConnection(), pipeline);
+        }
+
+        return pipeline;
+    }
+
+    private boolean transactionPromissed() {
+        return threadLocalConnectionTransactionPromisedSet.get().contains(getCurrentConnection());
+    }
+
+    private boolean pipelinePromissed() {
+        return threadLocalConnectionPipelinePromisedSet.get().contains(getCurrentConnection());
+    }
+
+    private Transaction getCurrentUnproxiedTransaction() {
+        return threadLocalConnectionTransactionMap.get().get(getCurrentConnection());
+    }
+
+    private Pipeline getCurrentUnproxiedPipeline() {
+        return threadLocalConnectionPipelineMap.get().get(getCurrentConnection());
+    }
+
+    private void addConnection(Jedis connection) {
+        threadLocalConnectionStack.get().push(connection);
+    }
+
+    private Jedis removeConnection() {
+        return threadLocalConnectionStack.get().pop();
+    }
+
+    private void mapTransaction(Transaction trasaction) {
+        threadLocalConnectionTransactionMap.get().put(getCurrentConnection(), trasaction);
+    }
+
+    private Transaction removeTransaction() {
+        return threadLocalConnectionTransactionMap.get().remove(getCurrentConnection());
+    }
+
+    private void mapPipeline(Pipeline pipeline) {
+        threadLocalConnectionPipelineMap.get().put(getCurrentConnection(), pipeline);
+    }
+
+    private Pipeline removePipeline() {
+        return threadLocalConnectionPipelineMap.get().remove(getCurrentConnection());
+    }
+
+    private class TransactionMethodInterceptor implements MethodInterceptor {
+
+        @Override
+        public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable {
+            if (untouchables.contains(method)) {
+                return methodProxy.invokeSuper(o, objects);
+            } else if (!transactionOpen() && transactionPromissed()) {
+                startTransactionLazy();
+                threadLocalConnectionTransactionStartedSet.get().add(getCurrentConnection());
+            }
+
+            return method.invoke(getCurrentUnproxiedTransaction(), objects);
+        }
+    }
+
+    private class PipelineMethodInterceptor implements MethodInterceptor {
+
+        @Override
+        public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable {
+            if (untouchables.contains(method)) {
+                return methodProxy.invokeSuper(o, objects);
+            } else if (!pipelineOpen() && pipelinePromissed()) {
+                startPipelineLazy();
+                threadLocalConnectionPipelineStartedSet.get().add(getCurrentConnection());
+                if (!transactionOpen() && transactionPromissed()) {
+                    startTransactionLazy();
+                    threadLocalConnectionTransactionStartedSet.get().add(getCurrentConnection());
+                }
+            }
+
+            return method.invoke(getCurrentUnproxiedPipeline(), objects);
+        }
     }
 }

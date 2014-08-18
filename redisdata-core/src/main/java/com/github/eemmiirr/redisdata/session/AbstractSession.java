@@ -170,6 +170,7 @@ package com.github.eemmiirr.redisdata.session;
 import com.google.common.base.Charsets;
 import com.google.common.base.Function;
 import com.github.eemmiirr.redisdata.datamapper.DataMapper;
+import sun.misc.Unsafe;
 
 import javax.annotation.Nullable;
 import java.util.*;
