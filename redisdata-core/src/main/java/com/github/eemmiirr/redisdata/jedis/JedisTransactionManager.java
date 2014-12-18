@@ -217,7 +217,7 @@ public class JedisTransactionManager implements TransactionManager<Jedis, Transa
     };
     private final ThreadLocal<Map<Jedis, Pipeline>> threadLocalConnectionPipelineMap = new ThreadLocal<Map<Jedis, Pipeline>>() {
         @Override
-        protected Map<Jedis, Pipeline>initialValue() {
+        protected Map<Jedis, Pipeline> initialValue() {
             return new HashMap<Jedis, Pipeline>();
         }
     };
@@ -289,16 +289,18 @@ public class JedisTransactionManager implements TransactionManager<Jedis, Transa
 
     @Override
     public void discardConnection(Throwable throwable) {
-        connectionPool.returnBrokenConnection(removeConnection());
+        if (connectionOpen()) {
+            connectionPool.returnBrokenConnection(removeConnection());
+        }
 
-        if(throwable instanceof JedisException) {
+        if (throwable instanceof JedisException) {
             throw new ClientException(Status.parse(throwable.getMessage()), "Something went wrong with the underlying redis client.", throwable);
         }
     }
 
     @Override
     public final Transaction getCurrentTransaction() {
-        if(transactionOpen()) {
+        if (transactionOpen()) {
             return getCurrentUnproxiedTransaction();
         } else if (transactionPromissed() && !pipelinePromissed()) {
             return getCurrentProxiedTransaction();
@@ -333,7 +335,7 @@ public class JedisTransactionManager implements TransactionManager<Jedis, Transa
 
     @Override
     public final Pipeline getCurrentPipeline() {
-        if(pipelineOpen()) {
+        if (pipelineOpen()) {
             return getCurrentUnproxiedPipeline();
         } else if (pipelinePromissed()) {
             return getCurrentProxiedPipeline();
@@ -378,7 +380,7 @@ public class JedisTransactionManager implements TransactionManager<Jedis, Transa
     private void executeTransactionLazy() {
         if (getCurrentUnproxiedPipeline() == null && getCurrentUnproxiedTransaction() != null) {
             removeTransaction().exec();
-        } else if(getCurrentUnproxiedPipeline() != null) {
+        } else if (getCurrentUnproxiedPipeline() != null) {
             getCurrentUnproxiedPipeline().exec();
         }
     }
@@ -399,7 +401,7 @@ public class JedisTransactionManager implements TransactionManager<Jedis, Transa
     private void executePipelineLazy() {
 
         // This seems like a bug in jedis. It should also work with sync() but it doesn't
-        if(getCurrentUnproxiedPipeline() != null) {
+        if (getCurrentUnproxiedPipeline() != null) {
             removePipeline().syncAndReturnAll();
         }
     }
@@ -413,7 +415,7 @@ public class JedisTransactionManager implements TransactionManager<Jedis, Transa
     private Transaction getCurrentProxiedTransaction() {
 
         Transaction transaction = transactionProxyCache.get(getCurrentConnection());
-        if(transaction == null) {
+        if (transaction == null) {
             transaction = (Transaction) transactionEnhancer.create();
             transactionProxyCache.put(getCurrentConnection(), transaction);
         }
@@ -423,7 +425,7 @@ public class JedisTransactionManager implements TransactionManager<Jedis, Transa
 
     private Pipeline getCurrentProxiedPipeline() {
         Pipeline pipeline = pipelineProxyCache.get(getCurrentConnection());
-        if(pipeline == null) {
+        if (pipeline == null) {
             pipeline = (Pipeline) pipelineEnhancer.create();
             pipelineProxyCache.put(getCurrentConnection(), pipeline);
         }
