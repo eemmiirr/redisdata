@@ -182,7 +182,7 @@ import redis.clients.jedis.*;
  * @author Emir Dizdarevic
  * @since 0.7
  */
-class JedisSessionFactory extends AbstractCachingSessionFactory {
+public class JedisSessionFactory extends AbstractCachingSessionFactory {
 
     private final TransactionManager<Jedis, Transaction, Pipeline> transactionManager;
     private final DataMapperResolver dataMapperResolver;
