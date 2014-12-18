@@ -26,7 +26,7 @@ Dependency
 ----------
 ```xml
 <dependency>
-    <groupId>com.github.eemmiirr</groupId>
+    <groupId>com.github.eemmiirr.redisdata</groupId>
     <artifactId>redisdata-core</artifactId>
     <version>0.7</version>
 </dependency>
