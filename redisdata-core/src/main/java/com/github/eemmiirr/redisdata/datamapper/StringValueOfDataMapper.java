@@ -204,10 +204,16 @@ public class StringValueOfDataMapper<T> implements DataMapper<T> {
     @Override
     public T deserialize(byte[] data, Class<T> clazz) throws DataMapperException {
         try {
-            if (!classMethodMap.containsKey(clazz)) {
+            if (!String.class.isAssignableFrom(clazz) && !classMethodMap.containsKey(clazz)) {
                 classMethodMap.putIfAbsent(clazz, clazz.getMethod("valueOf", String.class));
             }
-            return (T) classMethodMap.get(clazz).invoke(null, new String(data, encoding));
+
+            final String stringValue = new String(data, encoding);
+            if(String.class.isAssignableFrom(clazz)) {
+                return (T) stringValue;
+            } else {
+                return (T) classMethodMap.get(clazz).invoke(null, stringValue);
+            }
         } catch (Exception e) {
             throw new DataMapperException("Error deserializing byte stream into class " + clazz.getCanonicalName(), e);
         }
@@ -216,7 +222,7 @@ public class StringValueOfDataMapper<T> implements DataMapper<T> {
     @Override
     public boolean isSupported(Class<T> clazz) {
         try {
-            if (!classMethodMap.containsKey(clazz)) {
+            if (!String.class.isAssignableFrom(clazz) && !classMethodMap.containsKey(clazz)) {
                 classMethodMap.putIfAbsent(clazz, clazz.getMethod("valueOf", String.class));
             }
         } catch (NoSuchMethodException e) {
